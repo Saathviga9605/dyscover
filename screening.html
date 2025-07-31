@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Try Screening</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=OpenDyslexic&display=swap" rel="stylesheet">
+  <style>
+    .fun-gif {
+      transition: opacity 0.5s ease;
+    }
+    .hidden {
+      opacity: 0;
+      visibility: hidden;
+      height: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="logo">Dyscover</div>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="screening.html">Try Screening</a></li>
+      <li><a href="sample_report.html">Sample Report</a></li>
+      <li><a href="contact.html">Contact Us</a></li>
+    </ul>
+  </nav>
+
+  <!-- Game Title -->
+  <div class="game-title">Time for screening!</div>
+  <p class="game-p">
+    Keep calm, kiddo! This is just a game! No stress! No pressure! Just have fun and we'll take care of the rest!
+  </p>
+
+  <!-- Fun GIF -->
+  <div id="gif-wrapper" class="fun-gif">
+    <div class="tenor-gif-embed" data-postid="21800367" data-share-method="host" data-aspect-ratio="5" data-width="100%">
+      <a href="https://tenor.com/view/rascal-have-fun-gif-21800367">Rascal Have Fun Sticker</a> from 
+      <a href="https://tenor.com/search/rascal-stickers">Rascal Stickers</a>
+    </div>
+    <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
+  </div>
+
+  <!-- Game Panel -->
+  <div class="game-panel">
+    Game will load here...
+  </div>
+
+  <!-- Game Description -->
+  <div class="game-description">
+    This interactive game is designed to make early detection of dyslexia simple and engaging. By analyzing how children interact with language-based challenges, we aim to identify potential signs of dyslexia in a safe, non-judgmental space. While this tool is not a replacement for clinical evaluation, it serves as a valuable early alert mechanism for parents and educators.
+  </div>
+
+  <!-- Script to hide GIF -->
+  <script>
+    setTimeout(() => {
+      document.getElementById('gif-wrapper').classList.add('hidden');
+    }, 5000);
+  </script>
+
+</body>
+</html>
