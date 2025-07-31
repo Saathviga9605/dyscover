@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sample Report</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=OpenDyslexic&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="logo">Dyscover</div>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="screening.html">Try Screening</a></li>
+      <li><a href="sample_report.html">Sample Report</a></li>
+      <li><a href="contact.html">Contact Us</a></li>
+    </ul>
+  </nav>
+
+  <!-- Report -->
+  <div class="report-container">
+    <div class="report-title">Sample Screening Report</div>
+
+    <div class="chart-container">
+      <canvas id="skillChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="accuracyChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="focusChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <canvas id="predictionChart"></canvas>
+    </div>
+
+    <div class="summary-section">
+      <strong>Summary of Abilities:</strong><br>
+      Strongest abilities: <b>Phonemic Awareness</b> (90%) and <b>Visual Memory</b> (85%)<br>
+       Areas needing improvement: <b>Word Decoding</b> (55%) and <b>Letter Recognition</b> (60%)<br>
+      <br>
+      These indicators suggest the child may be facing challenges with phonological and orthographic processing. A full evaluation is recommended.
+    </div>
+
+    <div class="report-text">
+      <p><strong>Analysis:</strong> Based on the child's gameplay interaction, we observed slight delays in visual processing and symbol recognition tasks. These are common indicators for early dyslexia but may also reflect temporary attention gaps.</p>
+      <p><strong>Recommendation:</strong> We suggest a detailed professional evaluation if these signs persist. Meanwhile, using phonics-based reading apps and encouraging oral storytelling can help build confidence.</p>
+      <p><strong>Note:</strong> This screening tool is only indicative and not a diagnostic test. It helps detect patterns that may need further observation.</p>
+    </div>
+  </div>
+
+  <!-- Chart Scripts -->
+  <script>
+    // Skill Distribution
+    const ctx1 = document.getElementById('skillChart').getContext('2d');
+    new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: ['Visual Memory', 'Phonemic Awareness', 'Letter Recognition', 'Word Decoding', 'Sequencing'],
+        datasets: [{
+          label: 'Skill Score (%)',
+          data: [85, 90, 60, 55, 70],
+          backgroundColor: ['#3498db', '#2ecc71', '#f39c12', '#e74c3c', '#9b59b6'],
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: 'Skill Distribution'
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, max: 100 }
+        }
+      }
+    });
+
+    // Accuracy Chart
+    const ctx2 = document.getElementById('accuracyChart').getContext('2d');
+    new Chart(ctx2, {
+      type: 'pie',
+      data: {
+        labels: ['Correct Responses', 'Incorrect Responses'],
+        datasets: [{
+          data: [72, 28],
+          backgroundColor: ['#27ae60', '#e74c3c']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Reading Accuracy'
+          }
+        }
+      }
+    });
+
+    // Focus Levels
+    const ctx3 = document.getElementById('focusChart').getContext('2d');
+    new Chart(ctx3, {
+      type: 'bar',
+      data: {
+        labels: ['Game 1', 'Game 2', 'Game 3', 'Game 4'],
+        datasets: [{
+          label: 'Focus Level (%)',
+          data: [88, 75, 63, 85],
+          backgroundColor: '#2980b9'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Focus Levels Across Games'
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100
+          }
+        }
+      }
+    });
+
+    // Prediction Score
+    const ctx4 = document.getElementById('predictionChart').getContext('2d');
+    new Chart(ctx4, {
+      type: 'doughnut',
+      data: {
+        labels: ['Low Risk', 'Moderate Risk', 'High Risk'],
+        datasets: [{
+          data: [60, 30, 10],
+          backgroundColor: ['#2ecc71', '#f1c40f', '#e74c3c']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Risk Prediction Overview'
+          },
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }
+    });
+  </script>
+
+</body>
+</html>
