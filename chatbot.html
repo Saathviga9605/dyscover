@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contact - Dyslexia Screening Tool</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .section {
+      padding: 60px 20px;
+    }
+
+    .contact-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .contact-container h2 {
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      color: #6237a0;
+    }
+
+    .contact-container p {
+      font-size: 1.2em;
+      margin-bottom: 30px;
+    }
+
+    .contact-info {
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 30px;
+    }
+
+    .contact-card {
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      flex: 1 1 300px;
+      transition: transform 0.3s ease;
+    }
+
+    .contact-card:hover {
+      transform: translateY(-5px);
+    }
+
+    .contact-card h3 {
+      margin-bottom: 10px;
+      color: #6237a0;
+    }
+
+    .contact-card p {
+      margin: 0;
+      color: #444;
+    }
+
+    .footer {
+      background-color: #f8e1ff;
+      padding: 20px;
+      text-align: center;
+      font-size: 0.9em;
+      color: #6237a0;
+    }
+
+    .chatbot {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      width: 400px;
+      max-height: 600px;
+      background: white;
+      border: 2px solid #6237a0;
+      border-radius: 20px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 999;
+    }
+
+    .chatbot-header {
+      background-color: #6237a0;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .chatbot-messages {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+    }
+
+    .chatbot-input {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #eee;
+    }
+
+    .chatbot-input input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+
+    .chatbot-input button {
+      background-color: #6237a0;
+      border: none;
+      padding: 8px 12px;
+      margin-left: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .chatbot-input button img {
+      height: 24px;
+      filter: invert(1);
+    }
+  </style>
+</head>
+<body>
+
+  <section id="contact" class="section pastel-pink">
+    <div class="contact-container">
+      <h2>Get in Touch</h2>
+      <p>If you'd like to learn more, collaborate, or just say hello, we'd love to hear from you!</p>
+      <div class="contact-info">
+        <div class="contact-card">
+          <h3>Email</h3>
+          <p>dyslexiascreener@support.ai</p>
+        </div>
+        <div class="contact-card">
+          <h3>Phone</h3>
+          <p>+91 98765 43210</p>
+        </div>
+        <div class="contact-card">
+          <h3>Address</h3>
+          <p>SSN College of Engineering,<br>Chennai, India</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="chatbot">
+    <div class="chatbot-header">Ask Me Anything!</div>
+    <div class="chatbot-messages" id="chat-messages"></div>
+    <div class="chatbot-input">
+      <input type="text" id="user-input" placeholder="Type your question..." onkeydown="if(event.key === 'Enter') sendMessage()">
+      <button onclick="startListening()" title="Speak" aria-label="Start voice input">
+        <img src="https://img.icons8.com/material-outlined/24/ffffff/microphone--v1.png" alt="Mic">
+      </button>
+      <button onclick="sendMessage()" title="Send" aria-label="Send message">
+        <img src="https://img.icons8.com/ios-glyphs/24/ffffff/filled-sent.png" alt="Send">
+      </button>
+    </div>
+  </div>
+
+  <footer id="footer-contact" class="footer">
+    &copy; 2025 Dyslexia Screening Tool. All rights reserved.
+  </footer>
+
+  <script>
+    function sendMessage() {
+      const input = document.getElementById('user-input');
+      const message = input.value.trim();
+      if (!message) return;
+
+      const chat = document.getElementById('chat-messages');
+      const userMsg = document.createElement('div');
+      userMsg.textContent = "🧑‍💻 You: " + message;
+      chat.appendChild(userMsg);
+
+      const botMsg = document.createElement('div');
+      botMsg.textContent = "🤖 Bot: I'm still learning! Try again later.";
+      setTimeout(() => chat.appendChild(botMsg), 800);
+
+      input.value = '';
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function startListening() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-IN';
+      recognition.onresult = function (event) {
+        document.getElementById('user-input').value = event.results[0][0].transcript;
+        sendMessage();
+      };
+      recognition.start();
+    }
+  </script>
+
+  <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
+</body>
+</html>

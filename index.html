@@ -36,7 +36,7 @@
   <h1>Dyscover: Where Every Word Finds Its Way</h1>
   <p>An AI-powered platform to detect, support, and uplift individuals with dyslexia through interactive tools and personalized experiences.</p>
   <div class="cta-buttons">
-    <button>Try the Screening</button>
+    <button onclick="window.location.href='screening.html'">Try the Screening</button>
   </div>
 </section>
 
@@ -169,9 +169,70 @@
     <input type="email" placeholder="Your Email Address" class="newsletter-input" />
     <button class="newsletter-btn">Subscribe</button>
   </section>
+<!-- Add this inside your HTML body -->
 
-  <!-- Chatbot Icon -->
-  <div class="chatbot-icon" >💬</div>
+<!-- Chatbot Toggle Icon -->
+<!-- Chatbot Toggle Icon -->
+<button class="chatbot-toggle" onclick="toggleChatbot()">
+  💬
+</button>
+
+<!-- Chatbot Window -->
+<div class="chatbot-window" id="chatbot">
+  <div class="chatbot-header">
+    <span> Ask Lexi 🤖</span>
+    <button onclick="toggleChatbot()">✖</button>
+  </div>
+  <div class="chatbot-body" id="chatbot-body">
+    <div><strong>Lexi:</strong> Hello! How can I help you today?</div>
+  </div>
+  <div class="chatbot-input">
+    <input type="text" id="user-input" placeholder="Type your question..." onkeydown="if(event.key === 'Enter') sendMessage()">
+    <button onclick="startListening()" title="Speak" aria-label="Start voice input">
+      <img src="https://img.icons8.com/material-outlined/24/6237a0/microphone--v1.png" alt="Mic">
+    </button>
+    <button onclick="sendMessage()" title="Send" aria-label="Send message">
+      <img src="https://img.icons8.com/ios-glyphs/24/6237a0/filled-sent.png" alt="Send">
+    </button>
+  </div>
+</div>
+
+<!-- Chatbot Scripts -->
+<script>
+  function toggleChatbot() {
+    const chatbot = document.getElementById('chatbot');
+    chatbot.classList.toggle('open');
+  }
+
+  function sendMessage() {
+    const input = document.getElementById('user-input');
+    const message = input.value.trim();
+    if (!message) return;
+
+    const chat = document.getElementById('chatbot-body');
+    const userMsg = document.createElement('div');
+    userMsg.innerHTML = "<strong>You:</strong> " + message;
+    chat.appendChild(userMsg);
+
+    const botMsg = document.createElement('div');
+    botMsg.innerHTML = "<strong>Bot:</strong> I'm still learning! Try again later.";
+    setTimeout(() => chat.appendChild(botMsg), 800);
+
+    input.value = '';
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function startListening() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-IN';
+    recognition.onresult = function (event) {
+      document.getElementById('user-input').value = event.results[0][0].transcript;
+      sendMessage();
+    };
+    recognition.start();
+  }
+</script>
+
   <script src="script.js"></script>
   <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
 
