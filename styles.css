@@ -403,8 +403,8 @@ footer {
   position: fixed;
   bottom: 90px;
   right: 20px;
-  width: 380px;               /* increased width */
-  max-height: 1000px;          /* increased height */
+  width: 380px;               
+  max-height: 1000px;        
   background: #f7f7f7;
   border: 1px solid #ddd;
   border-radius: 12px;
