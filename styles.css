@@ -383,7 +383,6 @@ footer {
   margin-bottom: 60px;
 }
 
-/* Styles */
 .chatbot-toggle {
   position: fixed;
   bottom: 20px;
@@ -463,3 +462,4 @@ footer {
   align-items: center;
   justify-content: center;
 }
+
