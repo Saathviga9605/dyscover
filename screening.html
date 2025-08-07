@@ -46,10 +46,203 @@
     <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
   </div>
 
-  <!-- Game Panel -->
-  <div class="game-panel">
-    Game Panel
-  </div>
+  <!-- Level 1 Screening Game Panel -->
+<div class="game-panel" id="gamePanel">
+  <div class="game-question" id="gameQuestion">Loading question...</div>
+  <div class="game-area" id="gameArea"></div>
+  <div class="game-feedback" id="gameFeedback"></div>
+  <button class="next-btn" id="nextBtn" onclick="loadNextQuestion()">Next</button>
+</div>
+
+<style>
+  .game-question {
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    margin: 30px 0 10px;
+    color: #6237a0;
+  }
+
+  .game-area {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 20px 0;
+    gap: 20px;
+  }
+
+  .game-box {
+    width: 100px;
+    height: 100px;
+    font-size: 40px;
+    font-weight: bold;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.3s ease;
+  }
+
+  .game-box:hover {
+    transform: scale(1.1);
+    background-color: #f0e5ff;
+  }
+
+  .game-feedback {
+    text-align: center;
+    font-size: 18px;
+    margin-top: 15px;
+    font-weight: 600;
+    color: #444;
+  }
+
+  .next-btn {
+    display: block;
+    margin: 20px auto;
+    padding: 10px 30px;
+    font-size: 16px;
+    border: none;
+    background-color: #6237a0;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .next-btn:hover {
+    background-color: #4a2c7c;
+  }
+</style>
+
+<script>
+  const gameData = [
+    {
+      question: "Click all the letter 'b's!",
+      letters: ['b', 'd', 'p', 'b', 'q', 'b', 'd', 'p'],
+      correct: ['b']
+    },
+    {
+      question: "Click all the letter 'd's!",
+      letters: ['b', 'd', 'p', 'q', 'd', 'p', 'd'],
+      correct: ['d']
+    },
+    {
+      question: "Click all the letter 'p's!",
+      letters: ['p', 'b', 'd', 'q', 'p', 'p', 'b'],
+      correct: ['p']
+    },
+    {
+      question: "Click all the letter 'q's!",
+      letters: ['q', 'd', 'b', 'q', 'p', 'q', 'b'],
+      correct: ['q']
+    },
+    {
+      question: "Mirror World: Click all flipped 'b's! (look carefully!)",
+      letters: ['b', 'Ↄ', 'd', '𐰁', 'b', 'Ԑ', 'q'],
+      correct: ['𐰁']
+    },
+    {
+      question: "Mirror World: Click all flipped 'd's!",
+      letters: ['p', 'Ↄ', 'q', 'ᑫ', 'd', 'Ԑ', 'ᑯ'],
+      correct: ['ᑫ']
+    },
+    {
+      question: "Fast Flash: What word did you see?",
+      type: "flash",
+      word: "cat"
+    },
+    {
+      question: "Fast Flash: What word did you see?",
+      type: "flash",
+      word: "dog"
+    },
+    {
+      question: "Fast Flash: What word did you see?",
+      type: "flash",
+      word: "book"
+    },
+    {
+      question: "Fast Flash: What word did you see?",
+      type: "flash",
+      word: "jump"
+    }
+  ];
+
+  let current = 0;
+  let score = 0;
+
+  function loadNextQuestion() {
+    const question = gameData[current];
+    const questionBox = document.getElementById('gameQuestion');
+    const area = document.getElementById('gameArea');
+    const feedback = document.getElementById('gameFeedback');
+    const nextBtn = document.getElementById('nextBtn');
+    feedback.textContent = "";
+    area.innerHTML = "";
+
+    if (!question) {
+      questionBox.textContent = "You've completed Level 1! 🎉 Your score: " + score + "/" + gameData.length;
+      nextBtn.style.display = "none";
+      return;
+    }
+
+    if (question.type === "flash") {
+      questionBox.textContent = question.question;
+      const flash = document.createElement('div');
+      flash.style.fontSize = '48px';
+      flash.style.fontWeight = 'bold';
+      flash.textContent = question.word;
+      area.appendChild(flash);
+      setTimeout(() => {
+        area.innerHTML = '<input type="text" placeholder="What did you see?" id="flashInput">';
+        const submitBtn = document.createElement('button');
+        submitBtn.textContent = "Submit";
+        submitBtn.className = "next-btn";
+        submitBtn.onclick = () => {
+          const val = document.getElementById('flashInput').value.toLowerCase().trim();
+          if (val === question.word) {
+            feedback.textContent = "✅ Correct!";
+            score++;
+          } else {
+            feedback.textContent = "❌ Incorrect. It was '" + question.word + "'";
+          }
+          setTimeout(() => {
+            current++;
+            loadNextQuestion();
+          }, 1200);
+        };
+        area.appendChild(submitBtn);
+      }, 1000);
+      return;
+    }
+
+    questionBox.textContent = question.question;
+    question.letters.forEach(letter => {
+      const box = document.createElement('div');
+      box.className = 'game-box';
+      box.textContent = letter;
+      box.addEventListener('click', () => {
+        if (question.correct.includes(letter)) {
+          box.style.backgroundColor = '#b3ffcc';
+          score++;
+        } else {
+          box.style.backgroundColor = '#ffb3b3';
+        }
+        box.style.pointerEvents = 'none';
+      });
+      area.appendChild(box);
+    });
+
+    current++;
+  }
+
+  window.onload = () => {
+    loadNextQuestion();
+  };
+</script>
+
 
   <!-- Game Description -->
   <div class="game-description">
