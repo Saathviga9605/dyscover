@@ -265,7 +265,7 @@
             background: rgba(255, 255, 255, 0.93);
             border-radius: 50%;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.11);
-            animation: float 3s infinite ease-in-out, rotate 5s infinite linear;
+            animation: float 3s infinite ease-in-out;
             transition: transform 0.18s, opacity 0.18s, font-size 0.15s;
             z-index: 13;
         }
@@ -351,25 +351,10 @@
             100% { transform: scale(1); }
         }
         @keyframes float {
-            0% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-28px) rotate(10deg); }
-            100% { transform: translateY(0) rotate(0deg); }
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-28px); }
+            100% { transform: translateY(0); }
         }
-        @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        @keyframes wobble {
-            0% { transform: rotate(0deg); }
-            15% { transform: rotate(-5deg); }
-            30% { transform: rotate(5deg); }
-            45% { transform: rotate(-3deg); }
-            60% { transform: rotate(3deg); }
-            75% { transform: rotate(-2deg); }
-            90% { transform: rotate(2deg); }
-            100% { transform: rotate(0deg); }
-        }
-        @keyframes zoomIn { from { transform: scale(0); } to { transform: scale(1); } }
         @keyframes floatBg {
             0% { transform: translateY(0); opacity: 0.5; }
             100% { transform: translateY(-600px); opacity: 0; }
@@ -392,18 +377,13 @@
         <!-- Animal Sidekick Friend (cute fox) -->
         <div id="animal-sidekick">
             <svg id="animal-svg" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg" aria-label="Cute fox">
-                <!-- Fox body -->
                 <circle cx="45" cy="55" r="30" fill="#FFB66D" stroke="#B96B23" stroke-width="2"/>
-                <!-- Ears -->
                 <polygon points="25,30 40,20 35,40" fill="#FAD086" stroke="#B96B23" stroke-width="1.2"/>
                 <polygon points="65,30 50,20 55,40" fill="#FAD086" stroke="#B96B23" stroke-width="1.2"/>
-                <!-- Eyes -->
                 <circle cx="32" cy="55" r="6" fill="#3B2D24"/>
                 <circle cx="58" cy="55" r="6" fill="#3B2D24"/>
-                <!-- Snout -->
                 <ellipse cx="45" cy="70" rx="12" ry="10" fill="#FAD086"/>
                 <circle cx="45" cy="68" r="4" fill="#B96B23"/>
-                <!-- Nose -->
                 <polygon points="43,73 45,75 47,73" fill="#733F03"/>
             </svg>
             <div id="animal-dialogue">Hey explorer!</div>
@@ -455,10 +435,8 @@
     let challengeTimeouts = [];
     let challengeActive = false;
     let paused = false;
-    let pauseStartTime = 0;
-    let pauseRemainingTimeouts = [];
 
-    // Templates
+    // Original templates but removed mirrored words and pop normal words for clarity
     const confusionTemplates = [
         { prompt: 'Pop the bubbles with "b"!', correct: 'b', options: ['b', 'd', 'p', 'q'] },
         { prompt: 'Pop the bubbles with "d"!', correct: 'd', options: ['d', 'b', 'p', 'q'] },
@@ -469,25 +447,27 @@
         { prompt: 'Pop the bubbles with "n"!', correct: 'n', options: ['n', 'u', 'm', 'w'] },
         { prompt: 'Pop the bubbles with "u"!', correct: 'u', options: ['u', 'n', 'w', 'm'] }
     ];
-    const mirrorTemplates = [
-        { prompt: 'Pop the mirrored letters!', correct: true, options: ['b', 'd', 'p', 'q', 'm', 'w'] },
-        { prompt: 'Pop the normal letters!', correct: false, options: ['b', 'd', 'p', 'q', 'm', 'w'] },
-        { prompt: 'Pop the mirrored words!', correct: true, options: ['bad', 'pod', 'dab', 'map', 'wan'] },
-        { prompt: 'Pop the normal words!', correct: false, options: ['bad', 'pod', 'dab', 'map', 'wan'] },
-        { prompt: 'Pop the flipped animals!', correct: true, options: ['dog', 'cat', 'pig', 'bat'] },
-        { prompt: 'Pop the right-way animals!', correct: false, options: ['dog', 'cat', 'pig', 'bat'] }
+    const mirrorMatchTemplates = [
+        {
+            prompt: 'Match the mirrored bubbles!',
+            pairs: [
+                { normal: 'b', mirror: 'd' },
+                { normal: 'p', mirror: 'q' },
+                { normal: 'm', mirror: 'w' }
+            ]
+        }
     ];
     const flashTemplates = [
-        { prompt: 'What word flashed?', word: 'bed', options: ['bed', 'deb', 'ped', 'qeb'] },
-        { prompt: 'What word flashed?', word: 'dog', options: ['dog', 'bog', 'qog', 'pog'] },
-        { prompt: 'What word flashed?', word: 'map', options: ['map', 'wap', 'mad', 'wab'] },
-        { prompt: 'What word flashed?', word: 'pin', options: ['pin', 'bin', 'pid', 'bid'] },
-        { prompt: 'What word flashed?', word: 'quack', options: ['quack', 'puack', 'duack', 'buack'] },
-        { prompt: 'What word flashed?', word: 'bun', options: ['bun', 'pun', 'bud', 'pud'] },
-        { prompt: 'What word flashed?', word: 'dab', options: ['dab', 'bab', 'pad', 'bad'] },
-        { prompt: 'What word flashed?', word: 'web', options: ['web', 'mep', 'wed', 'med'] },
-        { prompt: 'What word flashed?', word: 'nap', options: ['nap', 'uad', 'nab', 'uap'] },
-        { prompt: 'What word flashed?', word: 'mud', options: ['mud', 'wup', 'wnp', 'mnd'] }
+        { prompt: 'Pop the bubbles with the word "bed"!', word: 'bed', options: ['bed', 'deb', 'ped', 'qeb'] },
+        { prompt: 'Pop the bubbles with the word "dog"!', word: 'dog', options: ['dog', 'bog', 'qog', 'pog'] },
+        { prompt: 'Pop the bubbles with the word "map"!', word: 'map', options: ['map', 'wap', 'mad', 'wab'] },
+        { prompt: 'Pop the bubbles with the word "pin"!', word: 'pin', options: ['pin', 'bin', 'pid', 'bid'] },
+        { prompt: 'Pop the bubbles with the word "quack"!', word: 'quack', options: ['quack', 'puack', 'duack', 'buack'] },
+        { prompt: 'Pop the bubbles with the word "bun"!', word: 'bun', options: ['bun', 'pun', 'bud', 'pud'] },
+        { prompt: 'Pop the bubbles with the word "dab"!', word: 'dab', options: ['dab', 'bab', 'pad', 'bad'] },
+        { prompt: 'Pop the bubbles with the word "web"!', word: 'web', options: ['web', 'mep', 'wed', 'med'] },
+        { prompt: 'Pop the bubbles with the word "nap"!', word: 'nap', options: ['nap', 'uad', 'nab', 'uap'] },
+        { prompt: 'Pop the bubbles with the word "mud"!', word: 'mud', options: ['mud', 'wup', 'wnp', 'mnd'] }
     ];
 
     function clearAllScheduled() {
@@ -497,7 +477,7 @@
 
     function clearGameArea() {
         const els = gamePanel.querySelectorAll(
-            '.challenge-prompt, .flash-big, .bubble, #options-row, .background-bubble'
+            '.challenge-prompt, .flash-big, .bubble, #options-row, .background-bubble, .match-bubble'
         );
         els.forEach(e => e.remove());
         feedbackElement.style.display = 'none';
@@ -519,14 +499,6 @@
         gameOverScreen.classList.add('hidden');
         if      (which === 'start')    startScreen.classList.remove('hidden');
         else if (which === 'gameover') gameOverScreen.classList.remove('hidden');
-    }
-
-    function challengeHasType(ch, type) {
-        if (!ch) return false;
-        if (type === 'confusion') return 'correct' in ch && typeof ch.correct === 'string';
-        if (type === 'mirror')    return 'correct' in ch && typeof ch.correct === 'boolean';
-        if (type === 'flash')     return 'word' in ch;
-        return false;
     }
 
     const animalDialogues = [
@@ -579,11 +551,12 @@
         }, 2400);
     }
 
+    // Select challenges: replaced mirrored words with match game
     function selectChallenges() {
-        const all =
-            shuffle(confusionTemplates).slice(0, 3)
-                .concat(shuffle(mirrorTemplates).slice(0, 3))
-                .concat(shuffle(flashTemplates).slice(0, 4));
+        const all = []
+            .concat(shuffle(confusionTemplates).slice(0, 4))
+            .concat(shuffle(mirrorMatchTemplates).slice(0, 1))
+            .concat(shuffle(flashTemplates).slice(0, 3));
         return shuffle(all).slice(0, 8);
     }
 
@@ -612,23 +585,16 @@
         updateProgressBar(selectedChallenges.length, selectedChallenges.length);
     }
 
-    // Bubble Placement and Click Logic with Correct Answer Fixes
-    function createBubbles(ch) {
+    // Create confusion bubbles - popping with no rotation and popping effect
+    function createConfusionBubbles(ch) {
         challengeActive = true;
         let placed = [];
         let tries = 0, bubblesMade = 0;
         let maxBubbles = 10;
+        // Count correct bubbles to know when to advance
         let bubblesToPop = 0, bubblesPopped = 0;
-        // Helper for determining correctness depending on type for each bubble
-        function isBubbleCorrect(text, isMirrored) {
-            if (challengeHasType(ch, 'mirror')) {
-                // For mirror challenges: correct means mirrored or not mirrored based on ch.correct boolean
-                return isMirrored === ch.correct;
-            } else if (challengeHasType(ch, 'confusion')) {
-                // For confusion challenges: correct if letter matches challenge correct letter exactly
-                return text === ch.correct;
-            }
-            return false;
+        function isCorrect(text) {
+            return text === ch.correct;
         }
         while (bubblesMade < maxBubbles && tries < maxBubbles * 14) {
             tries++;
@@ -636,19 +602,16 @@
             let left = 65 + Math.random() * (670 - size);
             let top = 138 + Math.random() * (316 - size);
 
-            // Check overlap (center-center distance)
+            // Check overlap
             let overlap = placed.some(pos => Math.hypot(pos.left - left, pos.top - top) < (pos.size + size) * 0.53);
             if (overlap) continue;
 
             const bubble = document.createElement('div');
             bubble.classList.add('bubble');
-            const optionsCount = ch.options.length;
-            const randomOptionIndex = Math.floor(Math.random() * optionsCount);
-            const txt = ch.options[randomOptionIndex];
+            const txt = ch.options[Math.floor(Math.random() * ch.options.length)];
 
             bubble.textContent = txt;
 
-            // Font size adjustments
             if (txt.length >= 7) bubble.classList.add('long-text');
             if (txt.length > 10) bubble.classList.add('extra-long');
 
@@ -656,15 +619,11 @@
             bubble.style.height = `${size}px`;
             bubble.style.left = `${left}px`;
             bubble.style.top = `${top}px`;
+            // Remove rotation, only floating animation
+            bubble.style.animation = 'float 3s infinite ease-in-out';
             bubble.style.backgroundColor = `hsl(${Math.random() * 360},100%,92%)`;
 
-            let isMirrored = false;
-            if (challengeHasType(ch, 'mirror')) {
-                isMirrored = Math.random() > 0.5;
-                if (isMirrored) bubble.classList.add('mirrored');
-            }
-
-            bubble.dataset.correct = isBubbleCorrect(txt, isMirrored).toString();
+            bubble.dataset.correct = isCorrect(txt).toString();
 
             bubble.addEventListener('click', function bubbleClick() {
                 if (!challengeActive || paused) return;
@@ -674,10 +633,11 @@
                 if (bubble.dataset.correct === 'true') {
                     score += 10;
                     showFeedback('Yay! 🎉');
+                    bubble.style.transition = 'transform 0.25s, opacity 0.25s';
                     bubble.style.transform = 'scale(0)';
-                    bubble.style.opacity = '0.23';
-                    setTimeout(() => { bubble.remove(); }, 180);
+                    bubble.style.opacity = '0';
                     bubblesPopped++;
+                    setTimeout(() => { bubble.remove(); }, 280);
                     if (bubblesPopped >= bubblesToPop) {
                         challengeActive = false;
                         setTimeout(() => {
@@ -694,13 +654,12 @@
                 updateScore();
             });
 
-            if (bubble.dataset.correct === 'true') bubblesToPop++;
+            if (isCorrect(txt)) bubblesToPop++;
 
             gamePanel.appendChild(bubble);
             placed.push({ left, top, size });
             bubblesMade++;
         }
-
         challengeTimeouts.push(
             setTimeout(() => {
                 if (!challengeActive || paused) return;
@@ -712,65 +671,221 @@
         );
     }
 
-    function flashWord(word, callback) {
-        const flash = document.createElement('div');
-        flash.className = 'challenge-prompt flash-big';
-        flash.textContent = word;
-        flash.style.animation = 'fadeIn 0.45s, fadeOut 0.65s 0.55s';
-        gamePanel.appendChild(flash);
-        challengeTimeouts.push(setTimeout(() => {
-            flash.remove();
-            if (typeof callback === 'function') callback();
-        }, 1200));
+    // Matching game for mirrored bubbles game (two sides of bubbles to match pairs)
+    function createMirrorMatchingGame(ch) {
+        challengeActive = true;
+        const pairs = ch.pairs; // Array of {normal:"b", mirror:"d"}
+        const leftSideBubbles = [];
+        const rightSideBubbles = [];
+        const matchedPairs = new Set();
+
+        const bubbleSize = 72;
+        // Clear bubbles at end
+        function clearMatching() {
+            leftSideBubbles.forEach(b => b.remove());
+            rightSideBubbles.forEach(b => b.remove());
+        }
+
+        // Positions for left and right side bubbles
+        const leftX = 140;
+        const rightX = 590;
+        const startY = 130;
+        const gapY = 90;
+
+        // Create left side bubbles (normal letters)
+        pairs.forEach((pair, idx) => {
+            const leftBubble = document.createElement('div');
+            leftBubble.classList.add('bubble');
+            leftBubble.style.width = leftBubble.style.height = `${bubbleSize}px`;
+            leftBubble.style.left = `${leftX}px`;
+            leftBubble.style.top = `${startY + idx * gapY}px`;
+            leftBubble.textContent = pair.normal;
+            leftBubble.dataset.type = 'left';
+            leftBubble.dataset.value = pair.normal;
+            leftBubble.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 85%)`;
+            leftSideBubbles.push(leftBubble);
+            gamePanel.appendChild(leftBubble);
+        });
+
+        // Create right side bubbles (mirrored letters)
+        pairs.forEach((pair, idx) => {
+            const rightBubble = document.createElement('div');
+            rightBubble.classList.add('bubble');
+            rightBubble.style.width = rightBubble.style.height = `${bubbleSize}px`;
+            rightBubble.style.left = `${rightX}px`;
+            rightBubble.style.top = `${startY + idx * gapY}px`;
+            rightBubble.textContent = pair.mirror;
+            rightBubble.dataset.type = 'right';
+            rightBubble.dataset.value = pair.mirror;
+            rightBubble.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 85%)`;
+            rightSideBubbles.push(rightBubble);
+            gamePanel.appendChild(rightBubble);
+        });
+
+        let selectedLeft = null;
+        let selectedRight = null;
+
+        function resetSelection() {
+            selectedLeft = null;
+            selectedRight = null;
+            leftSideBubbles.forEach(b => b.style.border = '');
+            rightSideBubbles.forEach(b => b.style.border = '');
+        }
+
+        leftSideBubbles.forEach(bubble => {
+            bubble.style.cursor = 'pointer';
+            bubble.addEventListener('click', () => {
+                if (!challengeActive || paused) return;
+                if (matchedPairs.has(bubble.dataset.value)) return;
+                if (selectedLeft) selectedLeft.style.border = '';
+                selectedLeft = bubble;
+                bubble.style.border = '4px solid #32cd32';
+                tryMatch();
+            });
+        });
+
+        rightSideBubbles.forEach(bubble => {
+            bubble.style.cursor = 'pointer';
+            bubble.addEventListener('click', () => {
+                if (!challengeActive || paused) return;
+                if (matchedPairs.has(bubble.dataset.value)) return;
+                if (selectedRight) selectedRight.style.border = '';
+                selectedRight = bubble;
+                bubble.style.border = '4px solid #32cd32';
+                tryMatch();
+            });
+        });
+
+        function tryMatch() {
+            if (!selectedLeft || !selectedRight) return;
+            // Check if selectedLeft.value matches the normal side of pair whose mirror is selectedRight.value
+            const pairMatched = pairs.some(p => p.normal === selectedLeft.dataset.value && p.mirror === selectedRight.dataset.value);
+            if (pairMatched) {
+                score += 15;
+                showFeedback('Great match! 🎉');
+                matchedPairs.add(selectedLeft.dataset.value);
+                matchedPairs.add(selectedRight.dataset.value);
+                selectedLeft.style.backgroundColor = '#a7facb';
+                selectedRight.style.backgroundColor = '#a7facb';
+                selectedLeft.style.border = 'none';
+                selectedRight.style.border = 'none';
+                selectedLeft.style.cursor = 'default';
+                selectedRight.style.cursor = 'default';
+
+                selectedLeft = null;
+                selectedRight = null;
+
+                if (matchedPairs.size >= pairs.length * 2) {
+                    challengeActive = false;
+                    setTimeout(() => {
+                        clearMatching();
+                        currentChallenge++;
+                        nextChallenge();
+                    }, 1200);
+                }
+            } else {
+                score -= 5;
+                showFeedback('Try again! 🤔');
+                // Shake effect
+                if (selectedLeft) {
+                    selectedLeft.style.border = '4px solid #ff6262';
+                    setTimeout(() => { if(selectedLeft) selectedLeft.style.border = ''; }, 700);
+                }
+                if (selectedRight) {
+                    selectedRight.style.border = '4px solid #ff6262';
+                    setTimeout(() => { if(selectedRight) selectedRight.style.border = ''; }, 700);
+                }
+                // Reset selection after short delay
+                setTimeout(() => {
+                    resetSelection();
+                }, 700);
+            }
+            updateScore();
+        }
     }
 
-    function createOptions(ch) {
+    // Flash bubble popping game (pop bubbles with the word), no rotation, popping effect
+    function createFlashBubbles(ch) {
         challengeActive = true;
-        const optionsRow = document.createElement('div');
-        optionsRow.id = 'options-row';
-        const shuffled = shuffle(ch.options);
+        let placed = [];
+        let tries = 0, bubblesMade = 0;
+        let maxBubbles = 10;
+        let bubblesToPop = 0, bubblesPopped = 0;
 
-        shuffled.forEach((opt, idx) => {
-            const option = document.createElement('div');
-            option.className = 'option';
-            option.textContent = opt;
-            // Font size adjustments for long options
-            if (opt.length >= 7) option.style.fontSize = '23px';
-            if (opt.length > 10) option.style.fontSize = '16px';
+        function isCorrect(text) {
+            return text === ch.word;
+        }
+        while (bubblesMade < maxBubbles && tries < maxBubbles * 14) {
+            tries++;
+            let size = Math.random() * 60 + 42;
+            let left = 65 + Math.random() * (670 - size);
+            let top = 138 + Math.random() * (316 - size);
 
-            option.addEventListener('click', function optionClick() {
+            // Check overlap
+            let overlap = placed.some(pos => Math.hypot(pos.left - left, pos.top - top) < (pos.size + size) * 0.53);
+            if (overlap) continue;
+
+            const bubble = document.createElement('div');
+            bubble.classList.add('bubble');
+            const txt = ch.options[Math.floor(Math.random() * ch.options.length)];
+
+            bubble.textContent = txt;
+
+            if (txt.length >= 7) bubble.classList.add('long-text');
+            if (txt.length > 10) bubble.classList.add('extra-long');
+
+            bubble.style.width = `${size}px`;
+            bubble.style.height = `${size}px`;
+            bubble.style.left = `${left}px`;
+            bubble.style.top = `${top}px`;
+            bubble.style.animation = 'float 3s infinite ease-in-out';
+            bubble.style.backgroundColor = `hsl(${Math.random() * 360},100%,92%)`;
+
+            bubble.dataset.correct = isCorrect(txt).toString();
+
+            bubble.addEventListener('click', function bubbleClick() {
                 if (!challengeActive || paused) return;
-                challengeActive = false;
-                if (opt === ch.word) {
-                    score += 20;
-                    showFeedback('Super! 🌟');
-                    option.style.background = '#bcffa4';
-                    option.style.color = '#136038';
+                if (bubble.dataset.disabled) return;
+                bubble.dataset.disabled = "1";
+
+                if (bubble.dataset.correct === 'true') {
+                    score += 12;
+                    showFeedback('Pop! 🎉');
+                    bubble.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+                    bubble.style.transform = 'scale(0)';
+                    bubble.style.opacity = '0';
+                    bubblesPopped++;
+                    setTimeout(() => { bubble.remove(); }, 350);
+                    if (bubblesPopped >= bubblesToPop) {
+                        challengeActive = false;
+                        setTimeout(() => {
+                            document.querySelectorAll('.bubble').forEach(b => b.remove());
+                            currentChallenge++;
+                            nextChallenge();
+                        }, 500);
+                    }
                 } else {
-                    score -= 10;
-                    showFeedback('Try Again! 🤔');
-                    option.style.background = '#ffc2cc';
-                    option.style.color = '#b11818';
+                    score -= 5;
+                    showFeedback('Oops! 😅');
+                    bubble.style.backgroundColor = '#ffafc0';
                 }
                 updateScore();
-                setTimeout(() => {
-                    optionsRow.remove();
-                    currentChallenge++;
-                    nextChallenge();
-                }, 740);
             });
-            optionsRow.appendChild(option);
-        });
-        gamePanel.appendChild(optionsRow);
 
+            if (isCorrect(txt)) bubblesToPop++;
+
+            gamePanel.appendChild(bubble);
+            placed.push({ left, top, size });
+            bubblesMade++;
+        }
         challengeTimeouts.push(
             setTimeout(() => {
                 if (!challengeActive || paused) return;
                 challengeActive = false;
-                optionsRow.remove();
+                document.querySelectorAll('.bubble').forEach(b => b.remove());
                 currentChallenge++;
                 nextChallenge();
-            }, 7600)
+            }, 14500)
         );
     }
 
@@ -781,21 +896,25 @@
         challengeActive = false;
         updateProgressBar(currentChallenge, selectedChallenges.length);
         const challenge = selectedChallenges[currentChallenge];
-        let promptText = (challenge.prompt
-            || (challenge.word ? 'What flashed?' : 'Find the item!'));
+        let promptText = challenge.prompt || 'Find the item!';
         let prompt = displayPrompt(promptText);
-
         challengeTimeouts.push(setTimeout(() => {
             if (paused) return;
             if (prompt.parentNode) prompt.remove();
-            if (challengeHasType(challenge, 'confusion') || challengeHasType(challenge, 'mirror')) {
-                createBubbles(challenge);
-            } else if (challengeHasType(challenge, 'flash')) {
-                flashWord(challenge.word, () => createOptions(challenge));
+
+            // Determine challenge type
+            if ('pairs' in challenge) { // mirror match game
+                createMirrorMatchingGame(challenge);
+            } else if ('correct' in challenge && typeof challenge.correct === 'string') {
+                createConfusionBubbles(challenge);
+            } else if ('word' in challenge) {
+                createFlashBubbles(challenge);
             } else {
-                currentChallenge++; nextChallenge();
+                // fallback iterate to next
+                currentChallenge++;
+                nextChallenge();
             }
-        }, 1830));
+        }, 1800));
     }
 
     // -- Pause/Resume logic --
@@ -804,13 +923,7 @@
         paused = true;
         pauseOverlay.classList.add('show');
         pauseButton.innerHTML = '&#9658;';
-        // Clear all timeouts but keep currently active ones to resume later
-        pauseRemainingTimeouts = [];
-        while (challengeTimeouts.length) {
-            const tid = challengeTimeouts.pop();
-            clearTimeout(tid);
-            pauseRemainingTimeouts.push(tid);
-        }
+        clearAllScheduled();
     }
 
     function resumeGame() {
@@ -818,10 +931,7 @@
         paused = false;
         pauseOverlay.classList.remove('show');
         pauseButton.innerHTML = '&#10074;&#10074;';
-        // Resume any timeouts (cannot resume exact timeouts, so just proceed safely with next challenge if needed)
-        // For simplicity, just advance game state:
-        // If challengeActive false, next challenge immediately. Else keep play.
-        // We avoid immediate nextChallenge if bubbles/options are displayed - player should continue.
+        // Resume gameplay: if no active challenge, continue
         if (!challengeActive) {
             nextChallenge();
         }
