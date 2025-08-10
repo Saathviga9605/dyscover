@@ -26,6 +26,7 @@
             position: relative;
             overflow: hidden;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            user-select: none;
         }
         /* Progress Bar */
         #progress-bar-container {
@@ -49,28 +50,30 @@
             height: 100%;
         }
         #progress-bar-fill {
-            height:100%; border-radius: 22px;
+            height: 100%;
+            border-radius: 22px;
             background: linear-gradient(90deg, #ffb4f0 0%, #a7facb 100%);
             width: 0;
             transition: width 0.6s cubic-bezier(.62,1.5,.65,.99);
             position: absolute;
-            z-index:2;
+            z-index: 2;
         }
         #progress-bar-emoji {
             position: absolute;
             left: 0;
             top: -8px;
-            font-size:30px;
-            user-select:none;
+            font-size: 30px;
+            user-select: none;
             transition: left 0.6s;
-            z-index:3;
+            z-index: 3;
         }
 
+        /* Animal sidekick */
         #animal-sidekick {
             position: absolute;
             bottom: 24px;
             left: 14px;
-            width: 125px;
+            width: 130px;
             height: 148px;
             z-index: 100;
             pointer-events: none;
@@ -79,22 +82,93 @@
             align-items: center;
         }
         #animal-svg {
-            width: 90px; height: 90px; display: block;
+            width: 90px;
+            height: 90px;
+            display: block;
         }
         #animal-dialogue {
-            margin-top: 2px; min-height:34px; max-width:120px;
+            margin-top: 2px;
+            min-height: 34px;
+            max-width: 130px;
             padding: 7px 11px;
-            background: rgba(255,255,230,0.95);
+            background: rgba(255, 255, 230, 0.95);
             border-radius: 31px 27px 32px 25px / 31px 28px 30px 26px;
             color: #5a3e19;
             font-size: 13px;
             font-family: 'Press Start 2P', cursive;
             box-shadow: 0 1px 4px #ecd7b3;
             text-align: center;
-            line-break:auto;
-            word-break:break-word;
+            line-break: auto;
+            word-break: break-word;
             animation: bounce 1.2s infinite;
-            letter-spacing:0.2px;
+            letter-spacing: 0.2px;
+        }
+
+        /* Pause button */
+        #pause-button {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 44px;
+            height: 44px;
+            background: #fff6d1;
+            border-radius: 50%;
+            border: 3px solid #ffb4f0;
+            color: #ff69b4;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 0 10px #fa86c2;
+            z-index: 60;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        #pause-button:hover {
+            background-color: #ffb4f0;
+            color: #fff;
+        }
+
+        /* Pause overlay */
+        #pause-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.65);
+            backdrop-filter: blur(3px);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #pause-overlay.show {
+            display: flex;
+        }
+        #pause-overlay h2 {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 24px;
+            color: #ffb4f0;
+            margin-bottom: 24px;
+            text-shadow: 1px 1px 2px #000;
+        }
+        #pause-overlay button {
+            background-color: #ffb4f0;
+            color: #47335e;
+            font-weight: bold;
+            padding: 14px 32px;
+            font-size: 16px;
+            border: none;
+            border-radius: 12px;
+            margin: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(255, 180, 240, 0.7);
+            user-select: none;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        #pause-overlay button:hover {
+            background-color: #ff8ae6;
+            color: #fff;
         }
 
         #start-screen, #game-over-screen {
@@ -129,6 +203,7 @@
             border-radius: 10px;
             margin-top: 20px;
             animation: pulse 1.5s infinite;
+            user-select: none;
         }
 
         button:hover {
@@ -314,18 +389,32 @@
             </div>
             <div id="progress-bar-emoji">🐰</div>
         </div>
-        <!-- Animal Sidekick Friend -->
+        <!-- Animal Sidekick Friend (cute fox) -->
         <div id="animal-sidekick">
-            <svg id="animal-svg" viewBox="0 0 90 90">
-                <ellipse cx="45" cy="55" rx="34" ry="30" fill="#fff7e9" stroke="#e6bbaa" stroke-width="2"/>
-                <ellipse cx="35" cy="41" rx="6" ry="9" fill="#ffe1f2" transform="rotate(-12 35 41)"/>
-                <ellipse cx="55" cy="41" rx="6" ry="9" fill="#ffe1f2" transform="rotate(15 55 41)"/>
-                <ellipse cx="45" cy="71" rx="8" ry="7" fill="#ffafb9"/>
-                <circle cx="37" cy="56" r="4" fill="#654321"/>
-                <circle cx="53" cy="56" r="4" fill="#654321"/>
-                <ellipse cx="45" cy="68" rx="3" ry="2" fill="#654321"/>
+            <svg id="animal-svg" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg" aria-label="Cute fox">
+                <!-- Fox body -->
+                <circle cx="45" cy="55" r="30" fill="#FFB66D" stroke="#B96B23" stroke-width="2"/>
+                <!-- Ears -->
+                <polygon points="25,30 40,20 35,40" fill="#FAD086" stroke="#B96B23" stroke-width="1.2"/>
+                <polygon points="65,30 50,20 55,40" fill="#FAD086" stroke="#B96B23" stroke-width="1.2"/>
+                <!-- Eyes -->
+                <circle cx="32" cy="55" r="6" fill="#3B2D24"/>
+                <circle cx="58" cy="55" r="6" fill="#3B2D24"/>
+                <!-- Snout -->
+                <ellipse cx="45" cy="70" rx="12" ry="10" fill="#FAD086"/>
+                <circle cx="45" cy="68" r="4" fill="#B96B23"/>
+                <!-- Nose -->
+                <polygon points="43,73 45,75 47,73" fill="#733F03"/>
             </svg>
             <div id="animal-dialogue">Hey explorer!</div>
+        </div>
+        <!-- Pause Button -->
+        <div id="pause-button" title="Pause game">&#10074;&#10074;</div>
+        <!-- Pause Overlay -->
+        <div id="pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+            <h2 id="pause-title">Paused</h2>
+            <button id="resume-button" type="button">Resume</button>
+            <button id="pause-restart-button" type="button">Restart</button>
         </div>
 
         <div id="start-screen">
@@ -339,7 +428,7 @@
             <button id="restart-button">Play Again!</button>
         </div>
         <div id="score">Score: 0</div>
-        <div id="feedback"></div>
+        <div id="feedback" aria-live="assertive" aria-atomic="true"></div>
     </div>
     <script>
     function shuffle(array) { return array.slice().sort(() => Math.random() - 0.5); }
@@ -354,14 +443,22 @@
     const progressBarFill = document.getElementById('progress-bar-fill');
     const progressBarEmoji = document.getElementById('progress-bar-emoji');
     const animalDialogue = document.getElementById('animal-dialogue');
+    const pauseButton = document.getElementById('pause-button');
+    const pauseOverlay = document.getElementById('pause-overlay');
+    const resumeButton = document.getElementById('resume-button');
+    const pauseRestartButton = document.getElementById('pause-restart-button');
+
     let score = 0;
     let currentChallenge = 0;
     let selectedChallenges = [];
     let bgIntervalId = null;
     let challengeTimeouts = [];
     let challengeActive = false;
+    let paused = false;
+    let pauseStartTime = 0;
+    let pauseRemainingTimeouts = [];
 
-    // templates
+    // Templates
     const confusionTemplates = [
         { prompt: 'Pop the bubbles with "b"!', correct: 'b', options: ['b', 'd', 'p', 'q'] },
         { prompt: 'Pop the bubbles with "d"!', correct: 'd', options: ['d', 'b', 'p', 'q'] },
@@ -392,12 +489,13 @@
         { prompt: 'What word flashed?', word: 'nap', options: ['nap', 'uad', 'nab', 'uap'] },
         { prompt: 'What word flashed?', word: 'mud', options: ['mud', 'wup', 'wnp', 'mnd'] }
     ];
+
     function clearAllScheduled() {
         while (challengeTimeouts.length) clearTimeout(challengeTimeouts.pop());
         if (bgIntervalId !== null) { clearInterval(bgIntervalId); bgIntervalId = null; }
     }
+
     function clearGameArea() {
-        // Remove bubbles, prompts, options, feedback, backgrounds; keep overlays
         const els = gamePanel.querySelectorAll(
             '.challenge-prompt, .flash-big, .bubble, #options-row, .background-bubble'
         );
@@ -405,20 +503,24 @@
         feedbackElement.style.display = 'none';
         challengeActive = false;
     }
+
     function updateScore() {
         scoreElement.textContent = `Score: ${score}`;
     }
+
     function showFeedback(text) {
         feedbackElement.textContent = text;
         feedbackElement.style.display = 'block';
-        challengeTimeouts.push(setTimeout(() => { feedbackElement.style.display = 'none'; }, 1200));
+        challengeTimeouts.push(setTimeout(() => { if(!paused) feedbackElement.style.display = 'none'; }, 1200));
     }
+
     function showScreen(which) {
         startScreen.classList.add('hidden');
         gameOverScreen.classList.add('hidden');
         if      (which === 'start')    startScreen.classList.remove('hidden');
         else if (which === 'gameover') gameOverScreen.classList.remove('hidden');
     }
+
     function challengeHasType(ch, type) {
         if (!ch) return false;
         if (type === 'confusion') return 'correct' in ch && typeof ch.correct === 'string';
@@ -427,7 +529,6 @@
         return false;
     }
 
-    // --------- Animal dialogue and progress bar -----
     const animalDialogues = [
         "Let's begin!",
         "Great job!",
@@ -441,15 +542,14 @@
     const animalEmojis = ["🐰","🦊","🐻","🦄","🐧","🦉","🦦","🦝"];
 
     function updateProgressBar(currentIdx, totalLevels) {
-        const percent = Math.round((currentIdx/totalLevels)*100);
-        progressBarFill.style.width = percent+"%";
-        const leftPer = percent>2 ? percent : 2;
-        progressBarEmoji.textContent = animalEmojis[Math.floor(currentIdx/totalLevels*animalEmojis.length)%animalEmojis.length];
+        const percent = Math.round((currentIdx / totalLevels) * 100);
+        progressBarFill.style.width = percent + "%";
+        const leftPer = percent > 2 ? percent : 2;
+        progressBarEmoji.textContent = animalEmojis[Math.floor(currentIdx / totalLevels * animalEmojis.length) % animalEmojis.length];
         progressBarEmoji.style.left = `calc(${leftPer}% - 13px)`;
-        animalDialogue.textContent = animalDialogues[Math.min(currentIdx,animalDialogues.length-1)];
+        animalDialogue.textContent = animalDialogues[Math.min(currentIdx, animalDialogues.length - 1)];
     }
 
-    // --------- Challenge display logic -----------
     function displayPrompt(text) {
         const prompt = document.createElement('div');
         prompt.classList.add('challenge-prompt');
@@ -457,9 +557,11 @@
         gamePanel.appendChild(prompt);
         return prompt;
     }
+
     function startBackgroundBubbles() {
         if (bgIntervalId !== null) clearInterval(bgIntervalId);
         bgIntervalId = setInterval(() => {
+            if (paused) return; // pause bubbles creation if paused
             for (let i = 0; i < 4; i++) {
                 const bgBubble = document.createElement('div');
                 bgBubble.className = 'background-bubble';
@@ -476,16 +578,19 @@
             }
         }, 2400);
     }
+
     function selectChallenges() {
         const all =
-            shuffle(confusionTemplates).slice(0,3)
-            .concat(shuffle(mirrorTemplates).slice(0,3))
-            .concat(shuffle(flashTemplates).slice(0,4));
-        return shuffle(all).slice(0,8);
+            shuffle(confusionTemplates).slice(0, 3)
+                .concat(shuffle(mirrorTemplates).slice(0, 3))
+                .concat(shuffle(flashTemplates).slice(0, 4));
+        return shuffle(all).slice(0, 8);
     }
+
     function startGame() {
         clearAllScheduled();
         clearGameArea();
+        paused = false;
         challengeActive = false;
         showScreen(null);
         score = 0;
@@ -495,7 +600,10 @@
         startBackgroundBubbles();
         updateProgressBar(currentChallenge, selectedChallenges.length);
         setTimeout(nextChallenge, 530);
+        pauseOverlay.classList.remove('show');
+        pauseButton.innerHTML = "&#10074;&#10074;";
     }
+
     function endGame() {
         clearAllScheduled();
         clearGameArea();
@@ -503,53 +611,68 @@
         document.getElementById('final-score').textContent = score;
         updateProgressBar(selectedChallenges.length, selectedChallenges.length);
     }
-    // --- Bubble placement with no overlap, responsive text size
+
+    // Bubble Placement and Click Logic with Correct Answer Fixes
     function createBubbles(ch) {
         challengeActive = true;
         let placed = [];
         let tries = 0, bubblesMade = 0;
         let maxBubbles = 10;
         let bubblesToPop = 0, bubblesPopped = 0;
-        while (bubblesMade < maxBubbles && tries < maxBubbles*14) {
+        // Helper for determining correctness depending on type for each bubble
+        function isBubbleCorrect(text, isMirrored) {
+            if (challengeHasType(ch, 'mirror')) {
+                // For mirror challenges: correct means mirrored or not mirrored based on ch.correct boolean
+                return isMirrored === ch.correct;
+            } else if (challengeHasType(ch, 'confusion')) {
+                // For confusion challenges: correct if letter matches challenge correct letter exactly
+                return text === ch.correct;
+            }
+            return false;
+        }
+        while (bubblesMade < maxBubbles && tries < maxBubbles * 14) {
             tries++;
             let size = Math.random() * 60 + 42;
-            let left = 65 + Math.random() * (670-size);
+            let left = 65 + Math.random() * (670 - size);
             let top = 138 + Math.random() * (316 - size);
 
             // Check overlap (center-center distance)
-            let overlap = placed.some(pos => Math.hypot(pos.left-left,pos.top-top)<(pos.size+size)*0.53);
+            let overlap = placed.some(pos => Math.hypot(pos.left - left, pos.top - top) < (pos.size + size) * 0.53);
             if (overlap) continue;
 
             const bubble = document.createElement('div');
             bubble.classList.add('bubble');
-            const txt = ch.options[Math.floor(Math.random()*ch.options.length)];
+            const optionsCount = ch.options.length;
+            const randomOptionIndex = Math.floor(Math.random() * optionsCount);
+            const txt = ch.options[randomOptionIndex];
+
             bubble.textContent = txt;
 
+            // Font size adjustments
             if (txt.length >= 7) bubble.classList.add('long-text');
             if (txt.length > 10) bubble.classList.add('extra-long');
+
             bubble.style.width = `${size}px`;
             bubble.style.height = `${size}px`;
             bubble.style.left = `${left}px`;
             bubble.style.top = `${top}px`;
-            // Color
-            bubble.style.backgroundColor = `hsl(${Math.random()*360},100%,92%)`;
+            bubble.style.backgroundColor = `hsl(${Math.random() * 360},100%,92%)`;
 
-            // Mirror/Normal logic
-            if (challengeHasType(ch,'mirror')) {
-                const isMirrored = Math.random()>0.5;
+            let isMirrored = false;
+            if (challengeHasType(ch, 'mirror')) {
+                isMirrored = Math.random() > 0.5;
                 if (isMirrored) bubble.classList.add('mirrored');
-                bubble.dataset.correct = (isMirrored===ch.correct).toString();
-                if (isMirrored===ch.correct) bubblesToPop++;
-            } else {
-                bubble.dataset.correct = (txt===ch.correct).toString();
-                if (txt===ch.correct) bubblesToPop++;
             }
+
+            bubble.dataset.correct = isBubbleCorrect(txt, isMirrored).toString();
+
             bubble.addEventListener('click', function bubbleClick() {
-                if (!challengeActive) return;
+                if (!challengeActive || paused) return;
                 if (bubble.dataset.disabled) return;
                 bubble.dataset.disabled = "1";
+
                 if (bubble.dataset.correct === 'true') {
-                    score+=10;
+                    score += 10;
                     showFeedback('Yay! 🎉');
                     bubble.style.transform = 'scale(0)';
                     bubble.style.opacity = '0.23';
@@ -557,72 +680,80 @@
                     bubblesPopped++;
                     if (bubblesPopped >= bubblesToPop) {
                         challengeActive = false;
-                        setTimeout(()=>{
-                            document.querySelectorAll('.bubble').forEach(b=>b.remove());
+                        setTimeout(() => {
+                            document.querySelectorAll('.bubble').forEach(b => b.remove());
                             currentChallenge++;
                             nextChallenge();
                         }, 430);
                     }
                 } else {
-                    score-=5;
+                    score -= 5;
                     showFeedback('Oops! 😅');
                     bubble.style.backgroundColor = '#ffafc0';
                 }
                 updateScore();
             });
+
+            if (bubble.dataset.correct === 'true') bubblesToPop++;
+
             gamePanel.appendChild(bubble);
-            placed.push({left, top, size});
+            placed.push({ left, top, size });
             bubblesMade++;
         }
-        // End challenge after N seconds (but ONLY if not solved)
+
         challengeTimeouts.push(
-            setTimeout(()=>{
-                if (!challengeActive) return;
+            setTimeout(() => {
+                if (!challengeActive || paused) return;
                 challengeActive = false;
-                document.querySelectorAll('.bubble').forEach(b=>b.remove());
+                document.querySelectorAll('.bubble').forEach(b => b.remove());
                 currentChallenge++;
                 nextChallenge();
             }, 14500)
         );
     }
+
     function flashWord(word, callback) {
         const flash = document.createElement('div');
         flash.className = 'challenge-prompt flash-big';
         flash.textContent = word;
         flash.style.animation = 'fadeIn 0.45s, fadeOut 0.65s 0.55s';
         gamePanel.appendChild(flash);
-        challengeTimeouts.push(setTimeout(()=>{
+        challengeTimeouts.push(setTimeout(() => {
             flash.remove();
             if (typeof callback === 'function') callback();
         }, 1200));
     }
+
     function createOptions(ch) {
         challengeActive = true;
         const optionsRow = document.createElement('div');
         optionsRow.id = 'options-row';
         const shuffled = shuffle(ch.options);
-        shuffled.forEach((opt, idx)=>{
+
+        shuffled.forEach((opt, idx) => {
             const option = document.createElement('div');
             option.className = 'option';
             option.textContent = opt;
+            // Font size adjustments for long options
             if (opt.length >= 7) option.style.fontSize = '23px';
             if (opt.length > 10) option.style.fontSize = '16px';
+
             option.addEventListener('click', function optionClick() {
-                if (!challengeActive) return;
+                if (!challengeActive || paused) return;
                 challengeActive = false;
                 if (opt === ch.word) {
-                    score+=20;
+                    score += 20;
                     showFeedback('Super! 🌟');
                     option.style.background = '#bcffa4';
                     option.style.color = '#136038';
                 } else {
-                    score-=10;
+                    score -= 10;
                     showFeedback('Try Again! 🤔');
                     option.style.background = '#ffc2cc';
                     option.style.color = '#b11818';
                 }
                 updateScore();
-                setTimeout(()=>{
+                setTimeout(() => {
                     optionsRow.remove();
                     currentChallenge++;
                     nextChallenge();
@@ -631,17 +762,18 @@
             optionsRow.appendChild(option);
         });
         gamePanel.appendChild(optionsRow);
-        // auto skip after 7s if nothing clicked
+
         challengeTimeouts.push(
-            setTimeout(()=>{
-                if (!challengeActive) return;
-                challengeActive=false;
+            setTimeout(() => {
+                if (!challengeActive || paused) return;
+                challengeActive = false;
                 optionsRow.remove();
                 currentChallenge++;
                 nextChallenge();
-            },7600)
+            }, 7600)
         );
     }
+
     function nextChallenge() {
         clearAllScheduled();
         clearGameArea();
@@ -650,25 +782,69 @@
         updateProgressBar(currentChallenge, selectedChallenges.length);
         const challenge = selectedChallenges[currentChallenge];
         let promptText = (challenge.prompt
-                          || (challenge.word ? 'What flashed?' : 'Find the item!'));
+            || (challenge.word ? 'What flashed?' : 'Find the item!'));
         let prompt = displayPrompt(promptText);
 
-        challengeTimeouts.push( setTimeout(()=>{
+        challengeTimeouts.push(setTimeout(() => {
+            if (paused) return;
             if (prompt.parentNode) prompt.remove();
-            if (challengeHasType(challenge,'confusion') || challengeHasType(challenge,'mirror')) {
+            if (challengeHasType(challenge, 'confusion') || challengeHasType(challenge, 'mirror')) {
                 createBubbles(challenge);
-            } else if (challengeHasType(challenge,'flash')) {
-                flashWord(challenge.word, ()=>createOptions(challenge));
+            } else if (challengeHasType(challenge, 'flash')) {
+                flashWord(challenge.word, () => createOptions(challenge));
             } else {
                 currentChallenge++; nextChallenge();
             }
         }, 1830));
     }
 
-    startButton.onclick = ()=>startGame();
-    restartButton.onclick = ()=>{ showScreen(null); startGame(); };
-    document.addEventListener('DOMContentLoaded', ()=>showScreen('start'));
-    document.body.addEventListener('touchmove', function(e){e.preventDefault();},{ passive:false });
+    // -- Pause/Resume logic --
+    function pauseGame() {
+        if (paused) return;
+        paused = true;
+        pauseOverlay.classList.add('show');
+        pauseButton.innerHTML = '&#9658;';
+        // Clear all timeouts but keep currently active ones to resume later
+        pauseRemainingTimeouts = [];
+        while (challengeTimeouts.length) {
+            const tid = challengeTimeouts.pop();
+            clearTimeout(tid);
+            pauseRemainingTimeouts.push(tid);
+        }
+    }
+
+    function resumeGame() {
+        if (!paused) return;
+        paused = false;
+        pauseOverlay.classList.remove('show');
+        pauseButton.innerHTML = '&#10074;&#10074;';
+        // Resume any timeouts (cannot resume exact timeouts, so just proceed safely with next challenge if needed)
+        // For simplicity, just advance game state:
+        // If challengeActive false, next challenge immediately. Else keep play.
+        // We avoid immediate nextChallenge if bubbles/options are displayed - player should continue.
+        if (!challengeActive) {
+            nextChallenge();
+        }
+    }
+
+    pauseButton.addEventListener('click', () => {
+        if (paused) resumeGame();
+        else pauseGame();
+    });
+    resumeButton.addEventListener('click', () => {
+        resumeGame();
+    });
+    pauseRestartButton.addEventListener('click', () => {
+        pauseOverlay.classList.remove('show');
+        paused = false;
+        startGame();
+    });
+
+    startButton.onclick = () => startGame();
+    restartButton.onclick = () => { showScreen(null); startGame(); };
+    document.addEventListener('DOMContentLoaded', () => showScreen('start'));
+
+    document.body.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
     </script>
 </body>
 </html>
