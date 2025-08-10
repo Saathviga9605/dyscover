@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=800, user-scalable=no"/>
+    <title>Letter Adventure - Level 1</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #game-panel {
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(to bottom, #87ceeb, #ffffff);
+            border: 10px solid #ffd700;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            z-index: 20;
+        }
+
+        #start-screen h1, #game-over-screen h1 {
+            font-size: 24px;
+            text-shadow: 2px 2px 4px #000;
+            animation: bounce 1s infinite;
+            margin: 0;
+        }
+
+        button {
+            background-color: #ff69b4;
+            color: #fff;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 10px;
+            margin-top: 20px;
+            animation: pulse 1.5s infinite;
+        }
+
+        button:hover {
+            background-color: #ff1493;
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 18px;
+            color: #ff4500;
+            text-shadow: 1px 1px 2px #fff;
+            z-index: 30;
+        }
+
+        .challenge-prompt {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 92%;
+            min-width: 320px;
+            min-height: 60px;
+            max-height: 90px;
+            background: rgba(255,255,255,0.95);
+            color: #32cd32;
+            border-radius: 16px;
+            padding: 12px;
+            font-size: 22px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow-x: hidden;
+            overflow-y: auto;
+            z-index: 11;
+        }
+
+        .flash-big {
+            font-size: 56px !important;
+            color: #ff00ff !important;
+            margin-top: 120px !important;
+            background: rgba(255,255,255,0.8);
+        }
+
+        .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            color: #000;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            animation: float 3s infinite ease-in-out, rotate 5s infinite linear;
+            transition: transform 0.2s, opacity 0.2s;
+            z-index: 13;
+            user-select: none;
+        }
+        .bubble:hover { transform: scale(1.14); }
+
+        #options-row {
+            position: absolute;
+            bottom: 54px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 22px;
+            z-index: 14;
+            min-height: 90px;
+            pointer-events: all;
+        }
+
+        .option {
+            cursor: pointer;
+            font-size: 32px;
+            background: #fffacd;
+            padding: 16px 21px;
+            border-radius: 15px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.18);
+            text-align: center;
+            color: #3a0046;
+            margin-bottom: 0;
+            min-width: 80px;
+            max-width: 174px;
+            overflow-x: auto;
+            word-break: break-word;
+            user-select: none;
+            transition: background 0.14s, color 0.14s, transform 0.12s;
+        }
+        .option:active {
+            transform: scale(0.94);
+            background: #ffeedd;
+        }
+
+        #feedback {
+            position: absolute;
+            top: 48%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px #000;
+            animation: zoomIn 0.5s, fadeOut 1s 1s;
+            display: none;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .background-bubble {
+            position: absolute;
+            background: rgba(255, 182, 193, 0.5);
+            border-radius: 50%;
+            animation: floatBg 12s infinite linear;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .mirrored { transform: scaleX(-1); }
+        .hidden { display: none !important; }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-30px) rotate(10deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes wobble {
+            0% { transform: rotate(0deg); }
+            15% { transform: rotate(-5deg); }
+            30% { transform: rotate(5deg); }
+            45% { transform: rotate(-3deg); }
+            60% { transform: rotate(3deg); }
+            75% { transform: rotate(-2deg); }
+            90% { transform: rotate(2deg); }
+            100% { transform: rotate(0deg); }
+        }
+        @keyframes zoomIn { from { transform: scale(0); } to { transform: scale(1); } }
+        @keyframes floatBg {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(-600px); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-panel">
+        <div id="start-screen">
+            <h1>Welcome to Letter Adventure!</h1>
+            <p style="margin-top:12px;">Help the bubbly letters find their way!</p>
+            <button id="start-button">Start Fun!</button>
+        </div>
+        <div id="game-over-screen" class="hidden">
+            <h1>Great Job! Explorer!</h1>
+            <p style="margin-top:12px;">Your score: <span id="final-score">0</span></p>
+            <button id="restart-button">Play Again!</button>
+        </div>
+        <div id="score">Score: 0</div>
+        <div id="feedback"></div>
+    </div>
+
+    <script>
+    // Utility function
+    function shuffle(array) { return array.slice().sort(() => Math.random() - 0.5); }
+
+    // Globals
+    const gamePanel = document.getElementById('game-panel');
+    const scoreElement = document.getElementById('score');
+    const feedbackElement = document.getElementById('feedback');
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const startButton = document.getElementById('start-button');
+    const restartButton = document.getElementById('restart-button');
+    let score = 0;
+    let currentChallenge = 0;
+    let selectedChallenges = [];
+    let bgIntervalId = null;
+    let challengeTimeouts = [];
+    let challengeActive = false;
+
+    // Templates: same as before
+    const confusionTemplates = [
+        { prompt: 'Pop the bubbles with "b"!', correct: 'b', options: ['b', 'd', 'p', 'q'] },
+        { prompt: 'Pop the bubbles with "d"!', correct: 'd', options: ['d', 'b', 'p', 'q'] },
+        { prompt: 'Pop the bubbles with "p"!', correct: 'p', options: ['p', 'q', 'b', 'd'] },
+        { prompt: 'Pop the bubbles with "q"!', correct: 'q', options: ['q', 'p', 'd', 'b'] },
+        { prompt: 'Pop the bubbles with "m"!', correct: 'm', options: ['m', 'w', 'n', 'u'] },
+        { prompt: 'Pop the bubbles with "w"!', correct: 'w', options: ['w', 'm', 'n', 'u'] },
+        { prompt: 'Pop the bubbles with "n"!', correct: 'n', options: ['n', 'u', 'm', 'w'] },
+        { prompt: 'Pop the bubbles with "u"!', correct: 'u', options: ['u', 'n', 'w', 'm'] }
+    ];
+    const mirrorTemplates = [
+        { prompt: 'Pop the mirrored letters!', correct: true, options: ['b', 'd', 'p', 'q', 'm', 'w'] },
+        { prompt: 'Pop the normal letters!', correct: false, options: ['b', 'd', 'p', 'q', 'm', 'w'] },
+        { prompt: 'Pop the mirrored words!', correct: true, options: ['bad', 'pod', 'dab', 'map', 'wan'] },
+        { prompt: 'Pop the normal words!', correct: false, options: ['bad', 'pod', 'dab', 'map', 'wan'] },
+        { prompt: 'Pop the flipped animals!', correct: true, options: ['dog', 'cat', 'pig', 'bat'] },
+        { prompt: 'Pop the right-way animals!', correct: false, options: ['dog', 'cat', 'pig', 'bat'] }
+    ];
+    const flashTemplates = [
+        { prompt: 'What word flashed?', word: 'bed', options: ['bed', 'deb', 'ped', 'qeb'] },
+        { prompt: 'What word flashed?', word: 'dog', options: ['dog', 'bog', 'qog', 'pog'] },
+        { prompt: 'What word flashed?', word: 'map', options: ['map', 'wap', 'mad', 'wab'] },
+        { prompt: 'What word flashed?', word: 'pin', options: ['pin', 'bin', 'pid', 'bid'] },
+        { prompt: 'What word flashed?', word: 'quack', options: ['quack', 'puack', 'duack', 'buack'] },
+        { prompt: 'What word flashed?', word: 'bun', options: ['bun', 'pun', 'bud', 'pud'] },
+        { prompt: 'What word flashed?', word: 'dab', options: ['dab', 'bab', 'pad', 'bad'] },
+        { prompt: 'What word flashed?', word: 'web', options: ['web', 'mep', 'wed', 'med'] },
+        { prompt: 'What word flashed?', word: 'nap', options: ['nap', 'uad', 'nab', 'uap'] },
+        { prompt: 'What word flashed?', word: 'mud', options: ['mud', 'wup', 'wnp', 'mnd'] }
+    ];
+
+    function clearAllScheduled() {
+        while (challengeTimeouts.length) clearTimeout(challengeTimeouts.pop());
+        if (bgIntervalId !== null) { clearInterval(bgIntervalId); bgIntervalId = null; }
+    }
+    function clearGameArea() {
+        // Remove bubbles, challenge prompt, options, feedback, flash, everything but overlays
+        const els = gamePanel.querySelectorAll(
+            '.challenge-prompt, .flash-big, .bubble, #options-row, .background-bubble'
+        );
+        els.forEach(e => e.remove());
+        feedbackElement.style.display = 'none';
+        challengeActive = false;
+    }
+    function updateScore() {
+        scoreElement.textContent = `Score: ${score}`;
+    }
+    function showFeedback(text) {
+        feedbackElement.textContent = text;
+        feedbackElement.style.display = 'block';
+        challengeTimeouts.push(setTimeout(() => { feedbackElement.style.display = 'none'; }, 1200));
+    }
+    function showScreen(which) {
+        startScreen.classList.add('hidden');
+        gameOverScreen.classList.add('hidden');
+        if      (which === 'start')    startScreen.classList.remove('hidden');
+        else if (which === 'gameover') gameOverScreen.classList.remove('hidden');
+    }
+    function challengeHasType(ch, type) {
+        if (!ch) return false;
+        if (type === 'confusion') return 'correct' in ch && typeof ch.correct === 'string';
+        if (type === 'mirror')    return 'correct' in ch && typeof ch.correct === 'boolean';
+        if (type === 'flash')     return 'word' in ch;
+        return false;
+    }
+
+    // --------- Challenge display logic -----------
+    function displayPrompt(text) {
+        const prompt = document.createElement('div');
+        prompt.classList.add('challenge-prompt');
+        prompt.textContent = text;
+        gamePanel.appendChild(prompt);
+        return prompt;
+    }
+
+    function startBackgroundBubbles() {
+        if (bgIntervalId !== null) clearInterval(bgIntervalId);
+        bgIntervalId = setInterval(() => {
+            for (let i = 0; i < 4; i++) {
+                const bgBubble = document.createElement('div');
+                bgBubble.className = 'background-bubble';
+                const size = Math.random() * 60 + 40;
+                bgBubble.style.width = `${size}px`;
+                bgBubble.style.height = `${size}px`;
+                bgBubble.style.left = `${Math.random() * (800 - size)}px`;
+                bgBubble.style.top = `${600 + Math.random() * 40}px`;
+                bgBubble.style.animationDuration = `${Math.random() * 5 + 9}s`;
+                gamePanel.appendChild(bgBubble);
+                challengeTimeouts.push(
+                    setTimeout(() => { if (bgBubble.parentNode) bgBubble.remove(); }, 12000)
+                );
+            }
+        }, 2400);
+    }
+
+    function selectChallenges() {
+        const all =
+            shuffle(confusionTemplates).slice(0,3)
+            .concat(shuffle(mirrorTemplates).slice(0,3))
+            .concat(shuffle(flashTemplates).slice(0,4));
+        return shuffle(all).slice(0,8);
+    }
+
+    // ---- Scene logic
+    function startGame() {
+        clearAllScheduled();
+        clearGameArea();
+        challengeActive = false;
+        showScreen(null);
+        score = 0;
+        updateScore();
+        currentChallenge = 0;
+        selectedChallenges = selectChallenges();
+        startBackgroundBubbles();
+        setTimeout(nextChallenge, 420);
+    }
+    function endGame() {
+        clearAllScheduled();
+        clearGameArea();
+        showScreen('gameover');
+        document.getElementById('final-score').textContent = score;
+        // Optionally log
+    }
+
+    function createBubbles(ch) {
+        challengeActive = true;
+        let bubblesToPop = 0;
+        let bubblesPopped = 0;
+        const numBubbles = 10;
+        for (let i=0;i<numBubbles;i++) {
+            const bubble = document.createElement('div');
+            bubble.classList.add('bubble');
+
+            const letter = ch.options[Math.floor(Math.random() * ch.options.length)];
+            bubble.textContent = letter;
+            const size = Math.random() * 60 + 40;
+            bubble.style.width = `${size}px`;
+            bubble.style.height = `${size}px`;
+            bubble.style.left = `${55 + Math.random() * (690-size)}px`;
+            bubble.style.top = `${110 + Math.random() * (380-size)}px`;
+            bubble.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 88%)`;
+
+            if (challengeHasType(ch,'mirror')) {
+                const isMirrored = Math.random()>0.5;
+                if (isMirrored) bubble.classList.add('mirrored');
+                bubble.dataset.correct = (isMirrored===ch.correct).toString();
+                if (isMirrored===ch.correct) bubblesToPop++;
+            } else {
+                bubble.dataset.correct = (letter===ch.correct).toString();
+                if (letter===ch.correct) bubblesToPop++;
+            }
+            bubble.addEventListener('click', function bubbleClick() {
+                if (!challengeActive) return;
+                if (bubble.dataset.disabled) return;
+                bubble.dataset.disabled = "1";
+                if (bubble.dataset.correct === 'true') {
+                    score+=10;
+                    showFeedback('Yay! 🎉');
+                    bubble.style.transform = 'scale(0)';
+                    bubble.style.opacity = '0.3';
+                    setTimeout(() => { bubble.remove(); }, 220);
+                    bubblesPopped++;
+                    if (bubblesPopped >= bubblesToPop) {
+                        challengeActive = false;
+                        setTimeout(()=>{
+                            // Remove remaining bubbles quickly
+                            document.querySelectorAll('.bubble').forEach(b=>b.remove());
+                            currentChallenge++;
+                            nextChallenge();
+                        }, 400);
+                    }
+                } else {
+                    score-=5;
+                    showFeedback('Oops! 😅');
+                    bubble.style.backgroundColor = '#ffafc0';
+                }
+                updateScore();
+            });
+            gamePanel.appendChild(bubble);
+        }
+        // End challenge after N seconds (but ONLY if not solved)
+        challengeTimeouts.push(
+            setTimeout(()=>{
+                if (!challengeActive) return;
+                challengeActive = false;
+                document.querySelectorAll('.bubble').forEach(b=>b.remove());
+                currentChallenge++;
+                nextChallenge();
+            }, 13500)
+        );
+    }
+
+    function flashWord(word, callback) {
+        const flash = document.createElement('div');
+        flash.className = 'challenge-prompt flash-big';
+        flash.textContent = word;
+        flash.style.animation = 'fadeIn 0.45s, fadeOut 0.65s 0.55s';
+        gamePanel.appendChild(flash);
+        challengeTimeouts.push(setTimeout(()=>{
+            flash.remove();
+            if (typeof callback === 'function') callback();
+        }, 1200));
+    }
+
+    function createOptions(ch) {
+        challengeActive = true;
+        const optionsRow = document.createElement('div');
+        optionsRow.id = 'options-row';
+        // Ensure optionsRow always at the bottom, never out of panel
+        const shuffled = shuffle(ch.options);
+        shuffled.forEach((opt, idx)=>{
+            const option = document.createElement('div');
+            option.className = 'option';
+            option.textContent = opt;
+            option.addEventListener('click', function optionClick() {
+                if (!challengeActive) return;
+                challengeActive = false;
+                if (opt === ch.word) {
+                    score+=20;
+                    showFeedback('Super! 🌟');
+                    option.style.background = '#bcffa4';
+                    option.style.color = '#136038';
+                } else {
+                    score-=10;
+                    showFeedback('Try Again! 🤔');
+                    option.style.background = '#ffc2cc';
+                    option.style.color = '#b11818';
+                }
+                updateScore();
+                setTimeout(()=>{
+                    optionsRow.remove();
+                    currentChallenge++;
+                    nextChallenge();
+                }, 700);
+            });
+            optionsRow.appendChild(option);
+        });
+        gamePanel.appendChild(optionsRow);
+        // auto skip after 7s if nothing clicked
+        challengeTimeouts.push(
+            setTimeout(()=>{
+                if (!challengeActive) return;
+                challengeActive=false;
+                optionsRow.remove();
+                currentChallenge++;
+                nextChallenge();
+            },7200)
+        );
+    }
+
+    function updateProgressBar(level,currentIdx,totalLevels) {
+    const percent = Math.round((currentIdx/totalLevels)*100);
+    document.getElementById('progress-bar-fill').style.width = percent+"%";
+    document.getElementById('progress-bar-emoji').style.left = `calc(${percent}% - 18px)`;
+    document.getElementById('progress-bar-emoji').style.setProperty('--percent', percent);
+    // Emoji and animal dialogue change by context
+    const animalDialogue = [
+        "Let's begin!", "Great job!", "Almost there!", "You did it!", "Keep going!"
+    ];
+    document.getElementById('animal-dialogue').textContent = animalDialogue[
+        Math.min(Math.floor((percent/25)),animalDialogue.length-1)
+    ] || "Hey explorer!";
+}
+
+
+    function nextChallenge() {
+        clearAllScheduled();
+        clearGameArea();
+        if (currentChallenge >= selectedChallenges.length) { endGame(); return; }
+        challengeActive = false;
+        const challenge = selectedChallenges[currentChallenge];
+        let promptText = (challenge.prompt
+                          || (challenge.word ? 'What flashed?' : 'Find the item!'));
+        let prompt = displayPrompt(promptText);
+
+        challengeTimeouts.push( setTimeout(()=>{
+            if (prompt.parentNode) prompt.remove();
+            if (challengeHasType(challenge,'confusion') || challengeHasType(challenge,'mirror')) {
+                createBubbles(challenge);
+            } else if (challengeHasType(challenge,'flash')) {
+                flashWord(challenge.word, ()=>createOptions(challenge));
+            } else {
+                currentChallenge++; nextChallenge();
+            }
+        }, 1800));
+    }
+
+    // -- EVENTS --- 
+    startButton.onclick = ()=>startGame();
+    restartButton.onclick = ()=>{ showScreen(null); startGame(); };
+    document.addEventListener('DOMContentLoaded', ()=>showScreen('start'));
+
+    // Prevent accidental scrolling/zooming on mobile
+    document.body.addEventListener('touchmove', function(e){e.preventDefault();},{ passive:false});
+    </script>
+</body>
+</html>
