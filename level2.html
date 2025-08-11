@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=800, user-scalable=no">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=800, user-scalable=no" />
 <title>Letter Adventure - Level 2</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Bubblegum+Sans&display=swap" rel="stylesheet">
+
 <style>
-/* same styles from previous fixed version */
 body {
     background-color: #f0f8ff;
     font-family: 'Press Start 2P', cursive;
@@ -20,12 +20,12 @@ body {
     position: relative; overflow: hidden;
     box-shadow: 0 0 20px rgba(0,0,0,0.2);
 }
+.hidden { display: none !important; }
 #start-screen, #game-over-screen, #pause-overlay {
     position:absolute; top:0; left:0; width:100%; height:100%;
     display:flex; flex-direction:column; justify-content:center; align-items:center;
     background:rgba(0,0,0,0.5); color:#fff; z-index:100;
 }
-.hidden { display:none !important; }
 #start-screen h1, #game-over-screen h1 {
     font-size:24px; animation:bounce 1s infinite; margin:0;
 }
@@ -34,7 +34,6 @@ button {
     padding:15px 30px; font-size:16px; border-radius:10px;
     margin-top:20px; animation:pulse 1.5s infinite; cursor:pointer;
 }
-button:hover { background-color:#ff1493; }
 #pause-button {
     position:absolute; top:14px; right:14px;
     width:44px; height:44px; border-radius:50%;
@@ -55,15 +54,17 @@ button:hover { background-color:#ff1493; }
 #progress-bar-fill {
     height: 100%; border-radius: 22px;
     background: linear-gradient(90deg, #ffb4f0 0%, #a7facb 100%);
-    width: 0; transition: width 0.6s cubic-bezier(.62,1.5,.65,.99);
+    width: 0; transition: width 0.4s linear;
 }
 #progress-bar-emoji {
     position:absolute; top:-8px; left:0;
-    font-size:30px; transition:left 0.6s;
+    font-size:30px; transition:left 0.4s linear;
 }
 #animal-sidekick {
-    position:absolute; bottom:24px; left:14px; width:130px; height:148px;
-    z-index:100; pointer-events:none; display:flex; flex-direction:column; align-items:center;
+    position:absolute; bottom:24px; left:14px;
+    width:130px; height:148px;
+    z-index:100; pointer-events:none;
+    display:flex; flex-direction:column; align-items:center;
 }
 #animal-dialogue {
     margin-top:2px; min-height:34px; max-width:130px;
@@ -75,11 +76,11 @@ button:hover { background-color:#ff1493; }
     max-width:91%; background:rgba(255,255,255,0.95); padding:12px;
     font-size:18px; text-align:center; border-radius:16px; z-index:20;
 }
-.sequence-container {
+.sequence-container, .word-order-container {
     display:flex; justify-content:center; gap:10px; flex-wrap:wrap;
     position:absolute; top:200px; left:50%; transform:translateX(-50%);
 }
-.sequence-item {
+.sequence-item, .word-item {
     background:#fffacd; padding:8px 12px; border-radius:8px;
     border:2px solid #ffb4f0; cursor:grab;
     font-family:'Bubblegum Sans'; font-size:24px;
@@ -93,18 +94,28 @@ button:hover { background-color:#ff1493; }
     display:flex; justify-content:center; align-items:center;
     font-family:'Bubblegum Sans'; font-size:20px; cursor:pointer;
 }
-.grid-cell.found { background:#a7facb; }
+.grid-cell.selected { background:#a7facb; }
+.grid-cell.foundword { background:#90ee90 !important; }
 #feedback {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
     font-size:32px; color:#ffd700; display:none; z-index:200;
 }
+
 @keyframes bounce {
-    0%,20%,50%,80%,100% { transform:translateY(0);} 
+    0%,20%,50%,80%,100% { transform:translateY(0);}
     40% { transform:translateY(-10px);}
     60% { transform:translateY(-5px);}
 }
 @keyframes pulse {
     0% {transform:scale(1);} 50%{transform:scale(1.1);} 100%{transform:scale(1);}
+}
+@keyframes jumble {
+    0% {transform: translateY(0);}
+    25% {transform: translateY(-5px) rotate(5deg);}
+    50% {transform: translateY(5px) rotate(-5deg);}
+    75% {transform: translateY(-5px) rotate(3deg);}
+    100% {transform: translateY(0);}
 }
 </style>
 </head>
@@ -115,15 +126,6 @@ button:hover { background-color:#ff1493; }
         <div id="progress-bar-emoji">🦊</div>
     </div>
     <div id="animal-sidekick">
-        <svg width="90" height="90" viewBox="0 0 90 90">
-            <circle cx="45" cy="55" r="30" fill="#FFB66D" stroke="#B96B23" stroke-width="2"/>
-            <polygon points="25,30 40,20 35,40" fill="#FAD086" stroke="#B96B23" stroke-width="1.2"/>
-            <polygon points="65,30 50,20 55,40" fill="#FAD086" stroke="#B96B23" stroke-width="1.2"/>
-            <circle cx="32" cy="55" r="6" fill="#3B2D24"/>
-            <circle cx="58" cy="55" r="6" fill="#3B2D24"/>
-            <ellipse cx="45" cy="70" rx="12" ry="10" fill="#FAD086"/>
-            <circle cx="45" cy="68" r="4" fill="#B96B23"/>
-        </svg>
         <div id="animal-dialogue">Let's go!</div>
     </div>
     <div id="pause-button">&#10074;&#10074;</div>
@@ -148,46 +150,43 @@ const scoreEl = document.getElementById('score');
 const feedbackEl = document.getElementById('feedback');
 const finalScoreEl = document.getElementById('final-score');
 const progressBarFill = document.getElementById('progress-bar-fill');
+const progressEmoji = document.getElementById('progress-bar-emoji');
 
 let score=0, currentChallenge=0, selectedChallenges=[];
 let paused=false, challengeActive=false;
 let timeouts=[];
 
-/* Challenge Data */
-const challenges = [
-    { type:'sequence', sequence:['C','A','T'] },
-    { type:'wordmaze', words:['DOG','MAP'] },
-    { type:'sequence', sequence:['S','U','N'] },
-    { type:'wordmaze', words:['BAT','CUP'] }
-];
-
-/* Utilities */
-function clearAllScheduled(){
-    while(timeouts.length) clearTimeout(timeouts.pop());
-}
+function clearAllScheduled(){ while(timeouts.length) clearTimeout(timeouts.pop()); }
 function clearGameArea(){
-    document.querySelectorAll('.challenge-prompt,.sequence-container,.grid-container').forEach(el=>el.remove());
+    document.querySelectorAll('.challenge-prompt,.sequence-container,.grid-container,.word-order-container').forEach(el=>el.remove());
     feedbackEl.style.display='none';
 }
 function updateScore(){ scoreEl.textContent="Score: "+score; }
 function updateProgressBar(){
     let pct = (currentChallenge/selectedChallenges.length)*100;
     progressBarFill.style.width = pct+"%";
+    progressEmoji.style.left = `calc(${pct}% - 15px)`;
 }
 function showFeedback(txt){
     feedbackEl.textContent=txt; feedbackEl.style.display='block';
-    timeouts.push(setTimeout(()=>{feedbackEl.style.display='none';},1500));
+    timeouts.push(setTimeout(()=>{ feedbackEl.style.display='none';},1500));
 }
 
-/* Game Flow */
 function startGame(){
-    clearAllScheduled(); clearGameArea();
     score=0; currentChallenge=0;
-    selectedChallenges = challenges;
+    selectedChallenges=buildChallenges();
     updateScore(); updateProgressBar();
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
     paused=false; nextChallenge();
+}
+function buildChallenges(){
+    return [
+        {type:'sequenceLetters'},
+        {type:'wordmaze'},
+        {type:'sequenceWords'},
+        {type:'wordmaze'}
+    ];
 }
 function endGame(){
     gameOverScreen.classList.remove('hidden');
@@ -198,55 +197,202 @@ function nextChallenge(){
     if(currentChallenge>=selectedChallenges.length){ endGame(); return; }
     challengeActive=true; updateProgressBar();
     const ch = selectedChallenges[currentChallenge];
-    if(ch.type==='sequence') startSequenceScramble(ch);
-    if(ch.type==='wordmaze') startWordMaze(ch);
+    if(ch.type==='sequenceLetters') startSequenceLetters();
+    if(ch.type==='wordmaze') startWordMaze();
+    if(ch.type==='sequenceWords') startSequenceWords();
 }
 
-/* Sequence Game */
-function startSequenceScramble(ch){
-    const prompt = document.createElement('div');
+/* --- Sequence Memorising Random Letters --- */
+function startSequenceLetters(){
+    const prompt=document.createElement('div');
     prompt.className='challenge-prompt';
-    prompt.textContent="Memorize this sequence!";
+    prompt.textContent="Remember the order of letters!";
     gamePanel.appendChild(prompt);
 
-    const seqCont = document.createElement('div');
+    const letters = Array.from({length:5}, ()=>
+        String.fromCharCode(65+Math.floor(Math.random()*26))
+    );
+    const seqCont=document.createElement('div');
     seqCont.className='sequence-container';
-    ch.sequence.forEach(letter=>{
-        let div=document.createElement('div');
-        div.className='sequence-item'; div.textContent=letter;
+    letters.forEach(l=>{
+        const div=document.createElement('div');
+        div.className='sequence-item'; div.textContent=l;
         seqCont.appendChild(div);
     });
     gamePanel.appendChild(seqCont);
 
     timeouts.push(setTimeout(()=>{
-        seqCont.innerHTML='';
-        let shuffled=[...ch.sequence].sort(()=>Math.random()-0.5);
-        shuffled.forEach(letter=>{
-            let div=document.createElement('div');
-            div.className='sequence-item'; div.textContent=letter;
-            div.draggable=true;
-            div.addEventListener('dragstart', dragStart);
-            div.addEventListener('dragover', dragOver);
-            div.addEventListener('drop', dropped);
-            seqCont.appendChild(div);
+        seqCont.querySelectorAll('.sequence-item').forEach(it=>{
+            it.style.animation='jumble 0.4s infinite';
         });
-        const submitBtn=document.createElement('button');
-        submitBtn.textContent="Submit";
-        submitBtn.onclick=()=>{
-            if(!challengeActive) return;
-            challengeActive=false;
-            let guessed=Array.from(seqCont.children)
-                .filter(c=>c.classList.contains('sequence-item'))
-                .map(c=>c.textContent);
-            let correctCount=guessed.filter((g,i)=>g===ch.sequence[i]).length;
-            score += correctCount*5;
-            updateScore();
-            showFeedback(correctCount===ch.sequence.length?"Perfect!":correctCount+" correct");
-            currentChallenge++; timeouts.push(setTimeout(nextChallenge,1500));
-        };
-        seqCont.appendChild(submitBtn);
-    },2000));
+        timeouts.push(setTimeout(()=>{
+            seqCont.innerHTML='';
+            let shuffled=[...letters].sort(()=>Math.random()-0.5);
+            shuffled.forEach(l=>{
+                const div=document.createElement('div');
+                div.className='sequence-item'; div.textContent=l;
+                div.draggable=true;
+                div.addEventListener('dragstart', dragStart);
+                div.addEventListener('dragover', dragOver);
+                div.addEventListener('drop', dropped);
+                seqCont.appendChild(div);
+            });
+            const submitBtn=document.createElement('button');
+            submitBtn.textContent="Submit";
+            submitBtn.onclick=()=>{
+                if(!challengeActive) return;
+                challengeActive=false;
+                let guessed=Array.from(seqCont.querySelectorAll('.sequence-item')).map(c=>c.textContent);
+                let correct=guessed.filter((g,i)=>g===letters[i]).length;
+                score += correct*5;
+                updateScore();
+                showFeedback(correct===letters.length?"Perfect!":correct+" correct");
+                currentChallenge++; timeouts.push(setTimeout(nextChallenge,1500));
+            };
+            seqCont.appendChild(submitBtn);
+        },800));
+    },3000));
 }
+
+/* --- Sequence Memorising Order of Words --- */
+function startSequenceWords(){
+    const prompt=document.createElement('div');
+    prompt.className='challenge-prompt';
+    prompt.textContent="Remember the order of words!";
+    gamePanel.appendChild(prompt);
+
+    const words=["SUN","MOON","STAR","PLANET","CLOUD"];
+    const wordCont=document.createElement('div');
+    wordCont.className='word-order-container';
+    words.forEach(w=>{
+        const div=document.createElement('div');
+        div.className='word-item'; div.textContent=w;
+        wordCont.appendChild(div);
+    });
+    gamePanel.appendChild(wordCont);
+
+    timeouts.push(setTimeout(()=>{
+        wordCont.querySelectorAll('.word-item').forEach(it=>{
+            it.style.animation='jumble 0.4s infinite';
+        });
+        timeouts.push(setTimeout(()=>{
+            wordCont.innerHTML='';
+            let shuffled=[...words].sort(()=>Math.random()-0.5);
+            shuffled.forEach(w=>{
+                const div=document.createElement('div');
+                div.className='word-item';
+                div.textContent=w;
+                div.draggable=true;
+                div.addEventListener('dragstart', dragStart);
+                div.addEventListener('dragover', dragOver);
+                div.addEventListener('drop', dropped);
+                wordCont.appendChild(div);
+            });
+            const submitBtn=document.createElement('button');
+            submitBtn.textContent="Submit";
+            submitBtn.onclick=()=>{
+                if(!challengeActive) return;
+                challengeActive=false;
+                let guessed=Array.from(wordCont.querySelectorAll('.word-item')).map(c=>c.textContent);
+                let correct=guessed.filter((g,i)=>g===words[i]).length;
+                score += correct*5;
+                updateScore();
+                showFeedback(correct===words.length?"Perfect!":correct+" correct");
+                currentChallenge++; timeouts.push(setTimeout(nextChallenge,1500));
+            };
+            wordCont.appendChild(submitBtn);
+        },800));
+    },3000));
+}
+
+/* --- Word Maze --- */
+function startWordMaze(){
+    const possibleWords=["CAT","DOG","SUN","MAP","BAT","HAT","CUP","MOON"];
+    const targetWords=shuffle(possibleWords).slice(0,5);
+    const prompt=document.createElement('div');
+    prompt.className='challenge-prompt';
+    prompt.textContent="Find: "+targetWords.join(", ");
+    gamePanel.appendChild(prompt);
+
+    const gridCont=document.createElement('div');
+    gridCont.className='grid-container';
+    const size=8;
+    let grid=Array.from({length:size},()=>Array(size).fill(""));
+
+    // place words in random directions
+    const dirs = [
+        [0,1],[1,0],[1,1],[-1,1],
+        [0,-1],[-1,0],[-1,-1],[1,-1]
+    ];
+    targetWords.forEach(word=>{
+        let placed=false, tries=0;
+        while(!placed && tries<100){
+            tries++;
+            let dir=dirs[Math.floor(Math.random()*dirs.length)];
+            let row=Math.floor(Math.random()*size);
+            let col=Math.floor(Math.random()*size);
+            let endRow=row+dir[0]*(word.length-1);
+            let endCol=col+dir[1]*(word.length-1);
+            if(endRow<0 || endRow>=size || endCol<0 || endCol>=size) continue;
+            let ok=true;
+            for(let i=0;i<word.length;i++){
+                let r=row+dir[0]*i, c=col+dir[1]*i;
+                if(grid[r][c] && grid[r][c]!==word[i]){ ok=false; break; }
+            }
+            if(ok){
+                for(let i=0;i<word.length;i++){
+                    grid[row+dir[0]*i][col+dir[1]*i]=word[i];
+                }
+                placed=true;
+            }
+        }
+    });
+    // fill empties
+    for(let r=0;r<size;r++){
+        for(let c=0;c<size;c++){
+            if(!grid[r][c]) grid[r][c]=String.fromCharCode(65+Math.floor(Math.random()*26));
+        }
+    }
+    // render grid
+    for(let r=0;r<size;r++){
+        for(let c=0;c<size;c++){
+            let cell=document.createElement('div');
+            cell.className='grid-cell';
+            cell.textContent=grid[r][c];
+            cell.dataset.r=r; cell.dataset.c=c;
+            cell.onclick=()=>cellClick(cell);
+            gridCont.appendChild(cell);
+        }
+    }
+    gamePanel.appendChild(gridCont);
+
+    let selectedCells=[];
+    function cellClick(cell){
+        if(cell.classList.contains('foundword')) return;
+        cell.classList.toggle('selected');
+        if(cell.classList.contains('selected')) selectedCells.push(cell);
+        else selectedCells = selectedCells.filter(c=>c!==cell);
+        checkSelection();
+    }
+    function checkSelection(){
+        let selWord = selectedCells.map(c=>c.textContent).join('');
+        let selRev = selectedCells.map(c=>c.textContent).reverse().join('');
+        if(targetWords.includes(selWord) || targetWords.includes(selRev)){
+            selectedCells.forEach(c=>{
+                c.classList.remove('selected');
+                c.classList.add('foundword');
+            });
+            selectedCells=[];
+            score+=10; updateScore(); showFeedback("Found!");
+            if(document.querySelectorAll('.foundword').length >= targetWords.join('').length){
+                challengeActive=false;
+                currentChallenge++; timeouts.push(setTimeout(nextChallenge,1500));
+            }
+        }
+    }
+}
+
+/* Drag & Drop common handlers */
 let dragSrcEl=null;
 function dragStart(e){ dragSrcEl=this; }
 function dragOver(e){ e.preventDefault(); }
@@ -259,51 +405,15 @@ function dropped(e){
     }
 }
 
-/* Word Maze */
-function startWordMaze(ch){
-    const prompt=document.createElement('div');
-    prompt.className='challenge-prompt';
-    prompt.textContent="Find: "+ch.words.join(", ");
-    gamePanel.appendChild(prompt);
-
-    const gridCont=document.createElement('div');
-    gridCont.className='grid-container';
-    const size=8;
-    let grid=Array.from({length:size},()=>Array(size).fill("").map(()=>String.fromCharCode(65+Math.floor(Math.random()*26))));
-    ch.words.forEach((word,rowIdx)=>{
-        let startCol=Math.floor(Math.random()*(size-word.length));
-        for(let i=0;i<word.length;i++){ grid[rowIdx][startCol+i]=word[i]; }
-    });
-
-    grid.forEach((row,r)=>{
-        row.forEach((letter,c)=>{
-            let cell=document.createElement('div');
-            cell.className='grid-cell'; cell.textContent=letter;
-            cell.onclick=()=>{
-                if(!challengeActive) return;
-                cell.classList.toggle('found');
-                checkMazeCompletion();
-            };
-            gridCont.appendChild(cell);
-        });
-    });
-    gamePanel.appendChild(gridCont);
-
-    function checkMazeCompletion(){
-        let expectedLetters = ch.words.join('').length;
-        let foundCount = document.querySelectorAll('.grid-cell.found').length;
-        if(foundCount >= expectedLetters){
-            challengeActive=false;
-            score+=10; updateScore(); showFeedback("Great!");
-            currentChallenge++; timeouts.push(setTimeout(nextChallenge,1500));
-        }
-    }
-}
+/* Utility shuffle */
+function shuffle(arr){ return arr.slice().sort(()=>Math.random()-0.5); }
 
 /* Pause */
 pauseBtn.onclick=()=>{ paused?resumeGame():pauseGame(); };
 function pauseGame(){ paused=true; pauseOverlay.classList.remove('hidden'); }
 function resumeGame(){ paused=false; pauseOverlay.classList.add('hidden'); }
+
+/* Events */
 resumeBtn.onclick=resumeGame;
 restartBtn.onclick=startGame;
 startBtn.onclick=startGame;
