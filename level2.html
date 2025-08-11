@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=800, user-scalable=no" />
 <title>Letter Adventure - Level 2</title>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Bubblegum+Sans&display=swap" rel="stylesheet">
-
 <style>
 body {
     background-color: #f0f8ff;
@@ -46,6 +45,12 @@ button {
     position:absolute; top:55px; left:24px;
     font-size:18px; color:#ff4500; z-index:30;
 }
+#timer {
+    position:absolute; top:52px; left:50%; transform:translateX(-50%);
+    font-size:16px; color:#ff4500; background:#fff6d1;
+    padding:3px 10px; border-radius:12px; font-family:'Press Start 2P';
+    user-select:none; z-index:40;
+}
 #progress-bar-container {
     position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
     width: 580px; height: 36px; background:#fff6d1; border-radius:22px;
@@ -66,6 +71,7 @@ button {
     z-index:100; pointer-events:none;
     display:flex; flex-direction:column; align-items:center;
 }
+#animal-svg { width: 90px; height: 90px; }
 #animal-dialogue {
     margin-top:2px; min-height:34px; max-width:130px;
     padding:7px 11px; background:rgba(255,255,230,0.95);
@@ -101,7 +107,6 @@ button {
     transform:translate(-50%,-50%);
     font-size:32px; color:#ffd700; display:none; z-index:200;
 }
-
 @keyframes bounce {
     0%,20%,50%,80%,100% { transform:translateY(0);}
     40% { transform:translateY(-10px);}
@@ -125,18 +130,32 @@ button {
         <div id="progress-bar-fill"></div>
         <div id="progress-bar-emoji">🦊</div>
     </div>
+    <div id="timer">Time: 00:00</div>
     <div id="animal-sidekick">
+        <svg id="animal-svg" viewBox="0 0 90 90">
+            <circle cx="45" cy="55" r="30" fill="#FFB66D" stroke="#B96B23" stroke-width="2"/>
+            <polygon points="25,30 40,20 35,40" fill="#FAD086" stroke="#B96B23" stroke-width="1.2"/>
+            <polygon points="65,30 50,20 55,40" fill="#FAD086" stroke="#B96B23" stroke-width="1.2"/>
+            <circle cx="32" cy="55" r="6" fill="#3B2D24"/>
+            <circle cx="58" cy="55" r="6" fill="#3B2D24"/>
+            <ellipse cx="45" cy="70" rx="12" ry="10" fill="#FAD086"/>
+            <circle cx="45" cy="68" r="4" fill="#B96B23"/>
+        </svg>
         <div id="animal-dialogue">Let's go!</div>
     </div>
     <div id="pause-button">&#10074;&#10074;</div>
-    <div id="pause-overlay" class="hidden"><h2>Paused</h2><button id="resume-btn">Resume</button><button id="restart-btn">Restart</button></div>
-
+    <div id="pause-overlay" class="hidden">
+        <h2>Paused</h2>
+        <button id="resume-btn">Resume</button>
+        <button id="restart-btn">Restart</button>
+    </div>
     <div id="start-screen"><h1>Level 2</h1><p>Sequencing & Working Memory</p><button id="start-btn">Start</button></div>
     <div id="game-over-screen" class="hidden"><h1>Well Done!</h1><p>Your score: <span id="final-score">0</span></p><button id="play-again">Play Again</button></div>
     <div id="score">Score: 0</div>
     <div id="feedback"></div>
 </div>
 <script>
+/* References & State */
 const gamePanel = document.getElementById('game-panel');
 const startBtn = document.getElementById('start-btn');
 const pauseBtn = document.getElementById('pause-button');
@@ -149,275 +168,137 @@ const pauseOverlay = document.getElementById('pause-overlay');
 const scoreEl = document.getElementById('score');
 const feedbackEl = document.getElementById('feedback');
 const finalScoreEl = document.getElementById('final-score');
+const timerEl = document.getElementById('timer');
 const progressBarFill = document.getElementById('progress-bar-fill');
 const progressEmoji = document.getElementById('progress-bar-emoji');
+const animalDialogue = document.getElementById('animal-dialogue');
 
-let score=0, currentChallenge=0, selectedChallenges=[];
-let paused=false, challengeActive=false;
-let timeouts=[];
+let score=0,currentChallenge=0,selectedChallenges=[];
+let paused=false,challengeActive=false;
+let timeouts=[],timerInterval=null,timeLeft=0;
 
-function clearAllScheduled(){ while(timeouts.length) clearTimeout(timeouts.pop()); }
+/* Helpers */
+function clearAllScheduled(){while(timeouts.length)clearTimeout(timeouts.pop());clearInterval(timerInterval);timerInterval=null;}
 function clearGameArea(){
     document.querySelectorAll('.challenge-prompt,.sequence-container,.grid-container,.word-order-container').forEach(el=>el.remove());
     feedbackEl.style.display='none';
+    timerEl.textContent="Time: 00:00";
 }
-function updateScore(){ scoreEl.textContent="Score: "+score; }
+function updateScore(){scoreEl.textContent="Score: "+score;}
 function updateProgressBar(){
-    let pct = (currentChallenge/selectedChallenges.length)*100;
-    progressBarFill.style.width = pct+"%";
-    progressEmoji.style.left = `calc(${pct}% - 15px)`;
+    let pct=(currentChallenge/selectedChallenges.length)*100;
+    progressBarFill.style.width=pct+"%";
+    progressEmoji.style.left=`calc(${pct}% - 15px)`;
 }
-function showFeedback(txt){
-    feedbackEl.textContent=txt; feedbackEl.style.display='block';
-    timeouts.push(setTimeout(()=>{ feedbackEl.style.display='none';},1500));
-}
+function showFeedback(txt){feedbackEl.textContent=txt;feedbackEl.style.display='block';timeouts.push(setTimeout(()=>{feedbackEl.style.display='none';},1500));}
+function startTimer(seconds,onExpire){clearInterval(timerInterval);timeLeft=seconds;updateTimerDisplay();timerInterval=setInterval(()=>{if(!paused){timeLeft--;updateTimerDisplay();if(timeLeft<=0){clearInterval(timerInterval);timerInterval=null;showFeedback("Time's up!");timeouts.push(setTimeout(onExpire,1000));}}},1000);}
+function updateTimerDisplay(){let m=Math.floor(timeLeft/60),s=timeLeft%60;timerEl.textContent=`Time: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;}
 
-function startGame(){
-    score=0; currentChallenge=0;
-    selectedChallenges=buildChallenges();
-    updateScore(); updateProgressBar();
-    startScreen.classList.add('hidden');
-    gameOverScreen.classList.add('hidden');
-    paused=false; nextChallenge();
-}
-function buildChallenges(){
-    return [
-        {type:'sequenceLetters'},
-        {type:'wordmaze'},
-        {type:'sequenceWords'},
-        {type:'wordmaze'}
-    ];
-}
-function endGame(){
-    gameOverScreen.classList.remove('hidden');
-    finalScoreEl.textContent=score;
-}
-function nextChallenge(){
-    clearAllScheduled(); clearGameArea();
-    if(currentChallenge>=selectedChallenges.length){ endGame(); return; }
-    challengeActive=true; updateProgressBar();
-    const ch = selectedChallenges[currentChallenge];
-    if(ch.type==='sequenceLetters') startSequenceLetters();
-    if(ch.type==='wordmaze') startWordMaze();
-    if(ch.type==='sequenceWords') startSequenceWords();
+/* Game Flow */
+function startGame(){clearAllScheduled();clearGameArea();score=0;currentChallenge=0;selectedChallenges=buildChallenges();updateScore();updateProgressBar();startScreen.classList.add('hidden');gameOverScreen.classList.add('hidden');paused=false;nextChallenge();}
+function buildChallenges(){return[{type:'sequenceLetters'},{type:'wordmaze'},{type:'sequenceWords'},{type:'wordmaze'}];}
+function endGame(){clearInterval(timerInterval);timerEl.textContent="Time: 00:00";gameOverScreen.classList.remove('hidden');finalScoreEl.textContent=score;}
+function nextChallenge(){clearAllScheduled();clearGameArea();if(currentChallenge>=selectedChallenges.length){endGame();return;}
+    challengeActive=true;updateProgressBar();const ch=selectedChallenges[currentChallenge];
+    if(ch.type==='sequenceLetters')startSequenceLetters();
+    else if(ch.type==='wordmaze')startWordMaze();
+    else if(ch.type==='sequenceWords')startSequenceWords();
 }
 
-/* --- Sequence Memorising Random Letters --- */
-function startSequenceLetters(){
-    const prompt=document.createElement('div');
-    prompt.className='challenge-prompt';
-    prompt.textContent="Remember the order of letters!";
-    gamePanel.appendChild(prompt);
+/* Sequence Letters */
+function startSequenceLetters(){animalDialogue.textContent="Remember these letters!";const prompt=document.createElement('div');prompt.className='challenge-prompt';prompt.textContent="Remember the order of letters!";gamePanel.appendChild(prompt);
+    const letters=Array.from({length:5},()=>String.fromCharCode(65+Math.floor(Math.random()*26)));const cont=document.createElement('div');cont.className='sequence-container';
+    letters.forEach(l=>{const d=document.createElement('div');d.className='sequence-item';d.textContent=l;cont.appendChild(d);});gamePanel.appendChild(cont);
+    setTimeout(()=>{cont.querySelectorAll('.sequence-item').forEach(it=>it.style.animation='jumble 0.4s infinite');setTimeout(()=>{cont.innerHTML='';
+        let shuf=[...letters].sort(()=>Math.random()-0.5);
+        shuf.forEach(l=>{const d=document.createElement('div');d.className='sequence-item';d.textContent=l;d.draggable=true;d.addEventListener('dragstart',dragStart);d.addEventListener('dragover',dragOver);d.addEventListener('drop',dropped);cont.appendChild(d);});
+        const btn=document.createElement('button');btn.textContent="Submit";btn.onclick=()=>{if(!challengeActive)return;challengeActive=false;clearInterval(timerInterval);let guess=[...cont.querySelectorAll('.sequence-item')].map(c=>c.textContent);let correct=guess.filter((g,i)=>g===letters[i]).length;score+=correct*5;updateScore();showFeedback(correct===letters.length?"Perfect!":`${correct} correct`);currentChallenge++;setTimeout(nextChallenge,1500);};cont.appendChild(btn);
+        startTimer(10,()=>{challengeActive=false;currentChallenge++;nextChallenge();});
+    },800);},3000);}
+function startSequenceWords(){animalDialogue.textContent="Remember these words!";const prompt=document.createElement('div');prompt.className='challenge-prompt';prompt.textContent="Remember the order of words!";gamePanel.appendChild(prompt);
+    const words=["SUN","MOON","STAR","PLANET","CLOUD"];const cont=document.createElement('div');cont.className='word-order-container';words.forEach(w=>{const d=document.createElement('div');d.className='word-item';d.textContent=w;cont.appendChild(d);});gamePanel.appendChild(cont);
+    setTimeout(()=>{cont.querySelectorAll('.word-item').forEach(it=>it.style.animation='jumble 0.4s infinite');setTimeout(()=>{cont.innerHTML='';let shuf=[...words].sort(()=>Math.random()-0.5);
+        shuf.forEach(w=>{const d=document.createElement('div');d.className='word-item';d.textContent=w;d.draggable=true;d.addEventListener('dragstart',dragStart);d.addEventListener('dragover',dragOver);d.addEventListener('drop',dropped);cont.appendChild(d);});
+        const btn=document.createElement('button');btn.textContent="Submit";btn.onclick=()=>{if(!challengeActive)return;challengeActive=false;clearInterval(timerInterval);let guess=[...cont.querySelectorAll('.word-item')].map(c=>c.textContent);let correct=guess.filter((g,i)=>g===words[i]).length;score+=correct*5;updateScore();showFeedback(correct===words.length?"Perfect!":`${correct} correct`);currentChallenge++;setTimeout(nextChallenge,1500);};cont.appendChild(btn);
+        startTimer(10,()=>{challengeActive=false;currentChallenge++;nextChallenge();});
+    },800);},3000);}
 
-    const letters = Array.from({length:5}, ()=>
-        String.fromCharCode(65+Math.floor(Math.random()*26))
-    );
-    const seqCont=document.createElement('div');
-    seqCont.className='sequence-container';
-    letters.forEach(l=>{
-        const div=document.createElement('div');
-        div.className='sequence-item'; div.textContent=l;
-        seqCont.appendChild(div);
-    });
-    gamePanel.appendChild(seqCont);
-
-    timeouts.push(setTimeout(()=>{
-        seqCont.querySelectorAll('.sequence-item').forEach(it=>{
-            it.style.animation='jumble 0.4s infinite';
-        });
-        timeouts.push(setTimeout(()=>{
-            seqCont.innerHTML='';
-            let shuffled=[...letters].sort(()=>Math.random()-0.5);
-            shuffled.forEach(l=>{
-                const div=document.createElement('div');
-                div.className='sequence-item'; div.textContent=l;
-                div.draggable=true;
-                div.addEventListener('dragstart', dragStart);
-                div.addEventListener('dragover', dragOver);
-                div.addEventListener('drop', dropped);
-                seqCont.appendChild(div);
-            });
-            const submitBtn=document.createElement('button');
-            submitBtn.textContent="Submit";
-            submitBtn.onclick=()=>{
-                if(!challengeActive) return;
-                challengeActive=false;
-                let guessed=Array.from(seqCont.querySelectorAll('.sequence-item')).map(c=>c.textContent);
-                let correct=guessed.filter((g,i)=>g===letters[i]).length;
-                score += correct*5;
-                updateScore();
-                showFeedback(correct===letters.length?"Perfect!":correct+" correct");
-                currentChallenge++; timeouts.push(setTimeout(nextChallenge,1500));
-            };
-            seqCont.appendChild(submitBtn);
-        },800));
-    },3000));
-}
-
-/* --- Sequence Memorising Order of Words --- */
-function startSequenceWords(){
-    const prompt=document.createElement('div');
-    prompt.className='challenge-prompt';
-    prompt.textContent="Remember the order of words!";
-    gamePanel.appendChild(prompt);
-
-    const words=["SUN","MOON","STAR","PLANET","CLOUD"];
-    const wordCont=document.createElement('div');
-    wordCont.className='word-order-container';
-    words.forEach(w=>{
-        const div=document.createElement('div');
-        div.className='word-item'; div.textContent=w;
-        wordCont.appendChild(div);
-    });
-    gamePanel.appendChild(wordCont);
-
-    timeouts.push(setTimeout(()=>{
-        wordCont.querySelectorAll('.word-item').forEach(it=>{
-            it.style.animation='jumble 0.4s infinite';
-        });
-        timeouts.push(setTimeout(()=>{
-            wordCont.innerHTML='';
-            let shuffled=[...words].sort(()=>Math.random()-0.5);
-            shuffled.forEach(w=>{
-                const div=document.createElement('div');
-                div.className='word-item';
-                div.textContent=w;
-                div.draggable=true;
-                div.addEventListener('dragstart', dragStart);
-                div.addEventListener('dragover', dragOver);
-                div.addEventListener('drop', dropped);
-                wordCont.appendChild(div);
-            });
-            const submitBtn=document.createElement('button');
-            submitBtn.textContent="Submit";
-            submitBtn.onclick=()=>{
-                if(!challengeActive) return;
-                challengeActive=false;
-                let guessed=Array.from(wordCont.querySelectorAll('.word-item')).map(c=>c.textContent);
-                let correct=guessed.filter((g,i)=>g===words[i]).length;
-                score += correct*5;
-                updateScore();
-                showFeedback(correct===words.length?"Perfect!":correct+" correct");
-                currentChallenge++; timeouts.push(setTimeout(nextChallenge,1500));
-            };
-            wordCont.appendChild(submitBtn);
-        },800));
-    },3000));
-}
-
-/* --- Word Maze --- */
+/* Word Maze */
 function startWordMaze(){
-    const possibleWords=["CAT","DOG","SUN","MAP","BAT","HAT","CUP","MOON"];
-    const targetWords=shuffle(possibleWords).slice(0,5);
-    const prompt=document.createElement('div');
-    prompt.className='challenge-prompt';
-    prompt.textContent="Find: "+targetWords.join(", ");
-    gamePanel.appendChild(prompt);
-
-    const gridCont=document.createElement('div');
-    gridCont.className='grid-container';
-    const size=8;
-    let grid=Array.from({length:size},()=>Array(size).fill(""));
-
-    // place words in random directions
-    const dirs = [
-        [0,1],[1,0],[1,1],[-1,1],
-        [0,-1],[-1,0],[-1,-1],[1,-1]
-    ];
-    targetWords.forEach(word=>{
-        let placed=false, tries=0;
-        while(!placed && tries<100){
-            tries++;
-            let dir=dirs[Math.floor(Math.random()*dirs.length)];
-            let row=Math.floor(Math.random()*size);
-            let col=Math.floor(Math.random()*size);
-            let endRow=row+dir[0]*(word.length-1);
-            let endCol=col+dir[1]*(word.length-1);
-            if(endRow<0 || endRow>=size || endCol<0 || endCol>=size) continue;
-            let ok=true;
-            for(let i=0;i<word.length;i++){
-                let r=row+dir[0]*i, c=col+dir[1]*i;
-                if(grid[r][c] && grid[r][c]!==word[i]){ ok=false; break; }
-            }
-            if(ok){
-                for(let i=0;i<word.length;i++){
-                    grid[row+dir[0]*i][col+dir[1]*i]=word[i];
-                }
-                placed=true;
-            }
-        }
-    });
-    // fill empties
-    for(let r=0;r<size;r++){
-        for(let c=0;c<size;c++){
-            if(!grid[r][c]) grid[r][c]=String.fromCharCode(65+Math.floor(Math.random()*26));
-        }
+    animalDialogue.textContent="Find all the hidden words!";
+    const wordsPool=["CAT","DOG","SUN","MAP","BAT","HAT","CUP","MOON","STAR","PLANET"],size=8;
+    let targetWords,grid,success=false;const dirs=[[0,1],[1,0],[1,1],[-1,1],[0,-1],[-1,0],[-1,-1],[1,-1]];
+    function generateGrid(){grid=Array.from({length:size},()=>Array(size).fill(''));targetWords=shuffle(wordsPool).slice(0,5);let placed=0;
+        targetWords.forEach(word=>{let done=false,tries=0;while(!done&&tries<200){tries++;let dir=dirs[Math.floor(Math.random()*dirs.length)];
+            let row=Math.floor(Math.random()*size),col=Math.floor(Math.random()*size);
+            let endR=row+dir[0]*(word.length-1),endC=col+dir[1]*(word.length-1);
+            if(endR<0||endR>=size||endC<0||endC>=size)continue;
+            let ok=true;for(let i=0;i<word.length;i++){let r=row+dir[0]*i,c=col+dir[1]*i;if(grid[r][c]&&grid[r][c]!==word[i]){ok=false;break;}}
+            if(ok){for(let i=0;i<word.length;i++){grid[row+dir[0]*i][col+dir[1]*i]=word[i];}done=true;placed++;}}});
+        success=placed===targetWords.length;
+        for(let r=0;r<size;r++)for(let c=0;c<size;c++)if(!grid[r][c])grid[r][c]=String.fromCharCode(65+Math.floor(Math.random()*26));
     }
-    // render grid
-    for(let r=0;r<size;r++){
-        for(let c=0;c<size;c++){
-            let cell=document.createElement('div');
-            cell.className='grid-cell';
-            cell.textContent=grid[r][c];
-            cell.dataset.r=r; cell.dataset.c=c;
-            cell.onclick=()=>cellClick(cell);
-            gridCont.appendChild(cell);
-        }
-    }
+    while(!success)generateGrid();
+    const prompt=document.createElement('div');prompt.className='challenge-prompt';prompt.textContent="Find: "+targetWords.join(", ");gamePanel.appendChild(prompt);
+    const gridCont=document.createElement('div');gridCont.className='grid-container';
+    for(let r=0;r<size;r++)for(let c=0;c<size;c++){let cell=document.createElement('div');cell.className='grid-cell';cell.textContent=grid[r][c];cell.dataset.r=r;cell.dataset.c=c;gridCont.appendChild(cell);}
     gamePanel.appendChild(gridCont);
-
-    let selectedCells=[];
-    function cellClick(cell){
-        if(cell.classList.contains('foundword')) return;
-        cell.classList.toggle('selected');
-        if(cell.classList.contains('selected')) selectedCells.push(cell);
-        else selectedCells = selectedCells.filter(c=>c!==cell);
-        checkSelection();
+    let sel=[],found=new Set();
+    function areAdj(a,b){return Math.abs(a[0]-b[0])<=1&&Math.abs(a[1]-b[1])<=1&&!(a[0]===b[0]&&a[1]===b[1]);}
+    function cellsMatch(cells,word){
+        if(cells.length!==word.length)return false;
+        for(let i=0;i<word.length;i++)if(cells[i].textContent!==word[i])return false;
+        for(let i=1;i<cells.length;i++)if(!areAdj([+cells[i-1].dataset.r,+cells[i-1].dataset.c],[+cells[i].dataset.r,+cells[i].dataset.c]))return false;
+        return true;
     }
-    function checkSelection(){
-        let selWord = selectedCells.map(c=>c.textContent).join('');
-        let selRev = selectedCells.map(c=>c.textContent).reverse().join('');
-        if(targetWords.includes(selWord) || targetWords.includes(selRev)){
-            selectedCells.forEach(c=>{
-                c.classList.remove('selected');
-                c.classList.add('foundword');
-            });
-            selectedCells=[];
-            score+=10; updateScore(); showFeedback("Found!");
-            if(document.querySelectorAll('.foundword').length >= targetWords.join('').length){
-                challengeActive=false;
-                currentChallenge++; timeouts.push(setTimeout(nextChallenge,1500));
+    function clearSel(){sel.forEach(c=>c.classList.remove('selected'));sel=[];}
+    function checkSel(){
+        if(sel.length===0)return;
+        const str=sel.map(c=>c.textContent).join('');
+        const rev=sel.map(c=>c.textContent).reverse().join('');
+        for(let w of targetWords){
+            if(!found.has(w)){
+                if((str===w&&cellsMatch(sel,w))||(rev===w&&cellsMatch([...sel].reverse(),w))){
+                    sel.forEach(c=>{c.classList.remove('selected');c.classList.add('foundword');});
+                    found.add(w);score+=10;updateScore();showFeedback(`Found "${w}"!`);sel=[];
+                    if(found.size===targetWords.length){clearInterval(timerInterval);challengeActive=false;currentChallenge++;setTimeout(nextChallenge,1500); }
+                    return;
+                }
             }
         }
+        if(sel.length>Math.max(...targetWords.map(w=>w.length)))clearSel();
     }
+    gridCont.addEventListener('click',e=>{
+        if(paused||!challengeActive)return;
+        let cell=e.target;
+        if(!cell.classList.contains('grid-cell')||cell.classList.contains('foundword'))return;
+        if(cell.classList.contains('selected')){
+            cell.classList.remove('selected');
+            sel=sel.filter(c=>c!==cell);
+            return;
+        }
+        if(sel.length>0){
+            const last=sel[sel.length-1];
+            if(!areAdj([+last.dataset.r,+last.dataset.c],[+cell.dataset.r,+cell.dataset.c])){showFeedback("Must be adjacent!");return;}
+        }
+        cell.classList.add('selected');sel.push(cell);checkSel();
+    });
+    startTimer(60,()=>{challengeActive=false;currentChallenge++;nextChallenge();});
 }
 
-/* Drag & Drop common handlers */
+/* Drag & Drop */
 let dragSrcEl=null;
-function dragStart(e){ dragSrcEl=this; }
-function dragOver(e){ e.preventDefault(); }
-function dropped(e){
-    e.preventDefault();
-    if(dragSrcEl!==this){
-        let temp=dragSrcEl.textContent;
-        dragSrcEl.textContent=this.textContent;
-        this.textContent=temp;
-    }
-}
-
-/* Utility shuffle */
-function shuffle(arr){ return arr.slice().sort(()=>Math.random()-0.5); }
+function dragStart(e){dragSrcEl=this;}
+function dragOver(e){e.preventDefault();}
+function dropped(e){e.preventDefault();if(dragSrcEl!==this){let t=dragSrcEl.textContent;dragSrcEl.textContent=this.textContent;this.textContent=t;}}
+function shuffle(a){return a.slice().sort(()=>Math.random()-0.5);}
 
 /* Pause */
-pauseBtn.onclick=()=>{ paused?resumeGame():pauseGame(); };
-function pauseGame(){ paused=true; pauseOverlay.classList.remove('hidden'); }
-function resumeGame(){ paused=false; pauseOverlay.classList.add('hidden'); }
-
-/* Events */
-resumeBtn.onclick=resumeGame;
-restartBtn.onclick=startGame;
-startBtn.onclick=startGame;
-playAgain.onclick=startGame;
+pauseBtn.onclick=()=>{paused?resumeGame():pauseGame();};
+function pauseGame(){paused=true;pauseOverlay.classList.remove('hidden');clearInterval(timerInterval);}
+function resumeGame(){if(!paused)return;paused=false;pauseOverlay.classList.add('hidden');}
+resumeBtn.onclick=resumeGame;restartBtn.onclick=startGame;
+startBtn.onclick=startGame;playAgain.onclick=startGame;
 </script>
 </body>
 </html>
