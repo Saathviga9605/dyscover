@@ -494,6 +494,10 @@
         challengeTimeouts.push(setTimeout(() => { if(!paused) feedbackElement.style.display = 'none'; }, 1200));
     }
 
+      document.getElementById("restart-button").addEventListener("click", function() {
+    window.location.href = "level2.html";
+  });
+
     function showScreen(which) {
         startScreen.classList.add('hidden');
         gameOverScreen.classList.add('hidden');
