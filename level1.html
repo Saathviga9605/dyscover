@@ -363,9 +363,16 @@
             #game-panel { width:98vw; max-width:820px; height: 96vh; min-height:420px; }
             #progress-bar-container{ width:76vw; max-width:620px;}
         }
+		/* Ensure calibration points are clickable even over overlays */
+		.calibration-point { pointer-events: auto; }
     </style>
+	<!-- Load WebGazer for gaze tracking -->
+	<script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
 </head>
+
 <body>
+	<!-- Webcam preview for eye tracking -->
+	<video id="webcam" autoplay playsinline muted style="position: fixed; top: 10px; right: 10px; width: 150px; height: 100px; border: 2px solid #ccc; border-radius: 8px; z-index: 1000; background: black;"></video>
     <div id="game-panel">
         <!-- Progress Bar -->
         <div id="progress-bar-container">
@@ -410,7 +417,8 @@
         <div id="score">Score: 0</div>
         <div id="feedback" aria-live="assertive" aria-atomic="true"></div>
     </div>
-    <script>
+	<div id="gaze-dot" style="position: fixed; width: 10px; height: 10px; background: limegreen; border: 2px solid darkgreen; border-radius: 50%; pointer-events: none; z-index: 999; display: none; transition: all 0.1s ease;"></div>
+	<script>
     function shuffle(array) { return array.slice().sort(() => Math.random() - 0.5); }
 
     const gamePanel = document.getElementById('game-panel');
@@ -435,6 +443,36 @@
     let challengeTimeouts = [];
     let challengeActive = false;
     let paused = false;
+    
+    let trialCounter = 0;
+    let csvRows = [];
+
+// CSV header (Excel-compatible)
+    const CSV_HEADER = [
+    "Trial_ID",
+    "Challenge_Type",
+    "Target_Text",
+    "Mean_Fixation_ms",
+    "Max_Fixation_ms",
+    "Fixation_Count",
+    "Target_Fixation_ms",
+    "Distractor_Fixation_ms",
+    "Distractor_Target_Ratio",
+    "TTFF_ms",
+    "Fixation_Switches",
+    "Reaction_Time_ms",
+    "Hesitation_Time_ms",
+    "Total_Clicks",
+    "Mis_Clicks",
+    "Accuracy",
+    "Final_Fixation",
+    "Score_After_Trial",
+    "Saccade_Variance",
+    "Regression_Count",
+    "Scanpath_Entropy",
+    "Horizontal_Saccade_Bias",
+    "Timestamp"
+    ].join(",");
 
     // Original templates but removed mirrored words and pop normal words for clarity
     const confusionTemplates = [
@@ -480,6 +518,8 @@
             '.challenge-prompt, .flash-big, .bubble, #options-row, .background-bubble, .match-bubble'
         );
         els.forEach(e => e.remove());
+        // Also remove any global calibration points
+        document.querySelectorAll('.calibration-point').forEach(e => e.remove());
         feedbackElement.style.display = 'none';
         challengeActive = false;
     }
@@ -587,6 +627,7 @@
         showScreen('gameover');
         document.getElementById('final-score').textContent = score;
         updateProgressBar(selectedChallenges.length, selectedChallenges.length);
+        downloadExcel()
     }
 
     // Create confusion bubbles - popping with no rotation and popping effect
@@ -633,6 +674,18 @@
                 if (!challengeActive || paused) return;
                 if (bubble.dataset.disabled) return;
                 bubble.dataset.disabled = "1";
+                trialData.clicks++;
+
+                if (bubble.dataset.correct !== 'true') {
+                    trialData.misClicks++;
+                } else {
+                    if (trialData.reactionTime === 0) {
+        trialData.reactionTime = performance.now() - trialData.startTime;
+        trialData.hesitationTime =
+            trialData.reactionTime - trialData.targetFixationTime;
+    }
+                }
+
 
                 if (bubble.dataset.correct === 'true') {
                     score += 10;
@@ -645,6 +698,13 @@
                     if (bubblesPopped >= bubblesToPop) {
                         challengeActive = false;
                         setTimeout(() => {
+                            logTrialMetrics()
+                            exportTrialToExcel(
+    ch.prompt || "unknown",
+    ch.correct || ch.word || "match"
+);
+
+
                             document.querySelectorAll('.bubble').forEach(b => b.remove());
                             currentChallenge++;
                             nextChallenge();
@@ -667,6 +727,13 @@
         challengeTimeouts.push(
             setTimeout(() => {
                 if (!challengeActive || paused) return;
+                logTrialMetrics()
+                exportTrialToExcel(
+    ch.prompt || "unknown",
+    ch.correct || ch.word || "match"
+);
+
+
                 challengeActive = false;
                 document.querySelectorAll('.bubble').forEach(b => b.remove());
                 currentChallenge++;
@@ -782,6 +849,14 @@
                 if (matchedPairs.size >= pairs.length * 2) {
                     challengeActive = false;
                     setTimeout(() => {
+                        logTrialMetrics();
+                        exportTrialToExcel(
+    ch.prompt || "unknown",
+    ch.correct || ch.word || "match"
+);
+
+
+
                         clearMatching();
                         currentChallenge++;
                         nextChallenge();
@@ -851,6 +926,18 @@
                 if (!challengeActive || paused) return;
                 if (bubble.dataset.disabled) return;
                 bubble.dataset.disabled = "1";
+                trialData.clicks++;
+
+                if (bubble.dataset.correct !== 'true') {
+                    trialData.misClicks++;
+                } else {
+                    if (trialData.reactionTime === 0) {
+        trialData.reactionTime = performance.now() - trialData.startTime;
+        trialData.hesitationTime =
+            trialData.reactionTime - trialData.targetFixationTime;
+    }
+                }
+
 
                 if (bubble.dataset.correct === 'true') {
                     score += 12;
@@ -863,6 +950,13 @@
                     if (bubblesPopped >= bubblesToPop) {
                         challengeActive = false;
                         setTimeout(() => {
+                            logTrialMetrics()
+                            exportTrialToExcel(
+    ch.prompt || "unknown",
+    ch.correct || ch.word || "match"
+);
+
+
                             document.querySelectorAll('.bubble').forEach(b => b.remove());
                             currentChallenge++;
                             nextChallenge();
@@ -885,6 +979,13 @@
         challengeTimeouts.push(
             setTimeout(() => {
                 if (!challengeActive || paused) return;
+                logTrialMetrics()
+                exportTrialToExcel(
+    ch.prompt || "unknown",
+    ch.correct || ch.word || "match"
+);
+
+
                 challengeActive = false;
                 document.querySelectorAll('.bubble').forEach(b => b.remove());
                 currentChallenge++;
@@ -892,10 +993,101 @@
             }, 14500)
         );
     }
+    function logTrialMetrics() {
+    const durations = fixations.map(f => f.duration);
+    const meanFix = durations.length ? durations.reduce((a,b)=>a+b,0)/durations.length : 0;
+    const maxFix = durations.length ? Math.max(...durations) : 0;
+
+    console.group('📊 Eye-Tracking Trial Metrics');
+    console.log('Mean Fixation Duration:', meanFix);
+    console.log('Max Fixation Duration:', maxFix);
+    console.log('Fixation Count:', trialData.fixationCount);
+    console.log('Target Fixation Duration:', trialData.targetFixationTime);
+    console.log('Distractor Fixation Duration:', trialData.distractorFixationTime);
+    console.log('Distractor / Target Ratio:',
+        trialData.distractorFixationTime /
+        Math.max(1, trialData.targetFixationTime));
+    console.log('TTFF (ms):', trialData.firstFixationTime);
+    console.log('Fixation Switching Rate:', trialData.fixationSwitches);
+    console.log('Reaction Time (ms):', trialData.reactionTime);
+    console.log('Hesitation Time (ms):', trialData.hesitationTime);
+    console.log('Clicks:', trialData.clicks);
+    console.log('Mis-clicks:', trialData.misClicks);
+    console.log('Final Fixation:', trialData.finalFixation);
+    console.groupEnd();
+}
+    function exportTrialToExcel(challengeType, targetText) {
+    trialCounter++;
+
+    const durations = fixations.map(f => f.duration);
+    const meanFix = durations.length
+        ? durations.reduce((a, b) => a + b, 0) / durations.length
+        : 0;
+
+    const maxFix = durations.length ? Math.max(...durations) : 0;
+
+    const accuracy =
+        trialData.clicks > 0
+            ? (trialData.clicks - trialData.misClicks) / trialData.clicks
+            : 0;
+    let saccadeData = {
+    saccadeVariance: "",
+    regressionCount: "",
+    entropy: "",
+    horizontalBias: ""
+};
+
+if (challengeType.includes("Match")) {
+    saccadeData = computeSaccadeMetrics(fixations);
+}
+    const row = [
+        trialCounter,
+        challengeType,
+        targetText,
+        meanFix.toFixed(2),
+        maxFix.toFixed(2),
+        trialData.fixationCount,
+        trialData.targetFixationTime.toFixed(2),
+        trialData.distractorFixationTime.toFixed(2),
+        (trialData.distractorFixationTime / Math.max(1, trialData.targetFixationTime)).toFixed(2),
+        trialData.firstFixationTime ?? "",
+        trialData.fixationSwitches,
+        trialData.reactionTime.toFixed(2),
+        trialData.hesitationTime.toFixed(2),
+        trialData.clicks,
+        trialData.misClicks,
+        accuracy.toFixed(2),
+        trialData.finalFixation,
+        score,
+        saccadeData.saccadeVariance.toFixed?.(2) ?? "",
+        saccadeData.regressionCount,
+        saccadeData.entropy.toFixed?.(2) ?? "",
+        saccadeData.horizontalBias.toFixed?.(2) ?? "",
+        new Date().toISOString()
+    ];
+
+    csvRows.push(row.join(","));
+}
+    function downloadExcel() {
+    const csvContent =
+        CSV_HEADER + "\n" + csvRows.join("\n");
+
+    const blob = new Blob([csvContent], {
+        type: "text/csv;charset=utf-8;"
+    });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Level1_EyeTracking_Metrics.csv";
+    link.click();
+}
+
+
 
     function nextChallenge() {
         clearAllScheduled();
         clearGameArea();
+        resetTrialData();
         if (currentChallenge >= selectedChallenges.length) { endGame(); return; }
         challengeActive = false;
         updateProgressBar(currentChallenge, selectedChallenges.length);
@@ -954,11 +1146,353 @@
         startGame();
     });
 
-    startButton.onclick = () => startGame();
-    restartButton.onclick = () => { showScreen(null); startGame(); };
+	startButton.onclick = () => { startGame(); tryStartEyeTracking(); };
+	restartButton.onclick = () => { showScreen(null); stopEyeTracking(); startGame(); };
     document.addEventListener('DOMContentLoaded', () => showScreen('start'));
 
     document.body.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });
+
+	// --- Webcam Feed (Requirement 1) ---
+	document.addEventListener('DOMContentLoaded', () => {
+		if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+			alert('Open over HTTPS or localhost for camera access.');
+		}
+	});
+
+	// --- Eye Tracking Initialization (Requirements 3-6) ---
+	let webgazerRunning = false;
+	let calibrationPoints = [];
+	let dwellTarget = null;
+	let dwellStart = 0;
+	const dwellMs = 500;
+	const greenDot = document.getElementById('gaze-dot');
+	const webcamVideoEl = document.getElementById('webcam');
+
+	function createCalibrationPoints() {
+		const grid = [0.2, 0.5, 0.8];
+		let idx = 0;
+		calibrationPoints = [];
+		for (let gy = 0; gy < 3; gy++) {
+			for (let gx = 0; gx < 3; gx++) {
+				idx++;
+				const x = grid[gx];
+				const y = grid[gy];
+				const pixelX = Math.round(x * window.innerWidth);
+				const pixelY = Math.round(y * window.innerHeight);
+				const dot = document.createElement('div');
+				dot.className = 'calibration-point';
+				dot.textContent = String(idx);
+				dot.style.position = 'fixed';
+				dot.style.width = '20px';
+				dot.style.height = '20px';
+				dot.style.background = 'pink';
+				dot.style.border = '3px solid red';
+				dot.style.borderRadius = '50%';
+				dot.style.zIndex = '1001';
+				dot.style.cursor = 'pointer';
+				dot.style.display = 'flex';
+				dot.style.alignItems = 'center';
+				dot.style.justifyContent = 'center';
+				dot.style.color = 'white';
+				dot.style.fontSize = '12px';
+				dot.style.left = (pixelX - 10) + 'px';
+				dot.style.top = (pixelY - 10) + 'px';
+				document.body.appendChild(dot);
+				calibrationPoints.push({ dot, pos: { x: pixelX, y: pixelY } });
+			}
+		}
+		return calibrationPoints;
+	}
+
+	function removeCalibrationPoints() {
+		calibrationPoints.forEach(p => p.dot && p.dot.remove());
+	}
+    const JITTER_RADIUS = 35;        // px
+const FIXATION_RADIUS = 40;      // px
+const FIXATION_MIN_DURATION = 100; // ms
+
+let gazeFixation = null;
+let fixations = [];
+
+let trialData = {};
+function resetTrialData() {
+    fixations = [];
+    gazeFixation = null;
+    trialData = {
+        startTime: performance.now(),
+        firstFixationTime: null,
+        targetFixationTime: 0,
+        distractorFixationTime: 0,
+        fixationCount: 0,
+        fixationSwitches: 0,
+        lastFixationType: null,
+        clicks: 0,
+        misClicks: 0,
+        reactionTime: 0,
+        hesitationTime: 0,
+        finalFixation: null
+    };
+}
+    function processGazePoint(x, y, t) {
+    if (!gazeFixation) {
+        gazeFixation = { x, y, start: t, samples: 1 };
+        return;
+    }
+
+    const dx = x - gazeFixation.x;
+    const dy = y - gazeFixation.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+
+    if (dist <= FIXATION_RADIUS) {
+        gazeFixation.x = (gazeFixation.x * gazeFixation.samples + x) / (gazeFixation.samples + 1);
+        gazeFixation.y = (gazeFixation.y * gazeFixation.samples + y) / (gazeFixation.samples + 1);
+        gazeFixation.samples++;
+    } else {
+        const duration = t - gazeFixation.start;
+        if (duration >= FIXATION_MIN_DURATION) {
+            registerFixation(gazeFixation.x, gazeFixation.y, duration);
+        }
+        gazeFixation = { x, y, start: t, samples: 1 };
+    }
+}
+    function classifyFixation(x, y) {
+    const bubbles = document.querySelectorAll('.bubble');
+    for (const b of bubbles) {
+        const r = b.getBoundingClientRect();
+        if (
+            x >= r.left - JITTER_RADIUS &&
+            x <= r.right + JITTER_RADIUS &&
+            y >= r.top - JITTER_RADIUS &&
+            y <= r.bottom + JITTER_RADIUS
+        ) {
+            if (!b.dataset.correct) return 'neutral'; // mirror-match
+            return b.dataset.correct === 'true' ? 'target' : 'distractor';
+        }
+    }
+    return 'none';
+}
+
+
+function registerFixation(x, y, duration) {
+    const type = classifyFixation(x, y);
+
+    fixations.push({ x, y, duration, type });
+    trialData.fixationCount++;
+
+    if (type === 'target') {
+        trialData.targetFixationTime += duration;
+        if (trialData.firstFixationTime === null) {
+            trialData.firstFixationTime = performance.now() - trialData.startTime;
+        }
+    }
+
+    if (type === 'distractor') {
+        trialData.distractorFixationTime += duration;
+    }
+
+    if (trialData.lastFixationType && trialData.lastFixationType !== type) {
+        trialData.fixationSwitches++;
+    }
+
+    trialData.lastFixationType = type;
+    trialData.finalFixation = type;
+}
+    function computeSaccadeMetrics(fixations) {
+    if (fixations.length < 2) {
+        return {
+            saccadeVariance: 0,
+            regressionCount: 0,
+            entropy: 0,
+            horizontalBias: 0
+        };
+    }
+
+    let saccadeLengths = [];
+    let regressions = 0;
+    let horizontalMoves = 0;
+
+    const bins = {}; // for entropy
+    const BIN_SIZE = 100; // px grid
+
+    for (let i = 1; i < fixations.length; i++) {
+        const dx = fixations[i].x - fixations[i - 1].x;
+        const dy = fixations[i].y - fixations[i - 1].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        saccadeLengths.push(dist);
+
+        // Horizontal bias
+        if (Math.abs(dx) > Math.abs(dy)) horizontalMoves++;
+
+        // Regression: back-and-forth X direction
+        if (i >= 2) {
+            const prevDx = fixations[i - 1].x - fixations[i - 2].x;
+            if (Math.sign(dx) !== Math.sign(prevDx)) regressions++;
+        }
+
+        // Entropy binning
+        const bx = Math.floor(fixations[i].x / BIN_SIZE);
+        const by = Math.floor(fixations[i].y / BIN_SIZE);
+        const key = `${bx},${by}`;
+        bins[key] = (bins[key] || 0) + 1;
+    }
+
+    // Variance
+    const mean = saccadeLengths.reduce((a, b) => a + b, 0) / saccadeLengths.length;
+    const variance =
+        saccadeLengths.reduce((a, b) => a + (b - mean) ** 2, 0) /
+        saccadeLengths.length;
+
+    // Entropy
+    const total = fixations.length;
+    let entropy = 0;
+    Object.values(bins).forEach(count => {
+        const p = count / total;
+        entropy -= p * Math.log2(p);
+    });
+
+    return {
+        saccadeVariance: variance,
+        regressionCount: regressions,
+        entropy: entropy,
+        horizontalBias: horizontalMoves / (fixations.length - 1)
+    };
+}
+
+
+
+	async function startEyeTracking() {
+		if (webgazerRunning || typeof webgazer === 'undefined') return;
+		console.log('Starting WebGazer...');
+		webgazerRunning = true;
+		try {
+			if (webgazer.params) {
+				webgazer.params.faceMeshSolutionPath = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh';
+			}
+
+			await webgazer
+				.setGazeListener((data) => {
+                        
+					if (!data || paused) return;
+                    const gx = data.x;
+                    const gy = data.y;
+                    const now = performance.now();
+                    processGazePoint(gx, gy, now);  
+					console.log('Gaze:', data.x, data.y);
+					const x = data.x - 5;
+					const y = data.y - 5;
+					greenDot.style.left = x + 'px';
+					greenDot.style.top = y + 'px';
+					greenDot.style.display = 'block';
+
+					// Dwell-based activation over bubbles
+					const bubbles = Array.from(document.querySelectorAll('.bubble'));
+					const gazeX = x + 5;
+					const gazeY = y + 5;
+					let over = null;
+					for (const b of bubbles) {
+						const r = b.getBoundingClientRect();
+						if (gazeX >= r.left && gazeX <= r.right && gazeY >= r.top && gazeY <= r.bottom) { over = b; break; }
+					}
+					if (over && over !== dwellTarget) {
+						dwellTarget = over;
+						dwellStart = performance.now();
+					} else if (!over) {
+						dwellTarget = null;
+						dwellStart = 0;
+					} else if (over && dwellTarget === over) {
+						if (performance.now() - dwellStart > dwellMs) {
+							console.log('Dwell activation on bubble');
+							// Simulate click fallback path
+							if (typeof over.click === 'function') over.click();
+							dwellTarget = null;
+							dwellStart = 0;
+						}
+					}
+				})
+				.setTracker('TFFacemesh')
+				.addMouseEventListeners()
+				.begin();
+
+			const webgazerFeed = document.getElementById('webgazerVideoFeed');
+			if (webgazerFeed && webgazerFeed.srcObject) {
+				webcamVideoEl.srcObject = webgazerFeed.srcObject;
+				try {
+					await webcamVideoEl.play();
+				} catch (playErr) {
+					console.warn('Preview play skipped.', playErr);
+				}
+			}
+			webgazer.showVideo(false);
+			webgazer.showFaceOverlay(false);
+			webgazer.showFaceFeedbackBox(false);
+			webgazer.showPredictionPoints(false);
+
+			setTimeout(() => {
+				createCalibrationPoints();
+				let calStep = 0;
+				const cps = calibrationPoints;
+				cps.forEach((p, i) => {
+					p.dot.style.opacity = i === 0 ? 1 : 0.3;
+					p.dot.onclick = () => {
+						if (i !== calStep) return;
+						if (typeof webgazer.recordScreenPosition === 'function') {
+							webgazer.recordScreenPosition(p.pos.x, p.pos.y, 'click');
+						}
+						console.log(`Cal ${i + 1} recorded.`);
+						p.dot.style.opacity = 0.5;
+						calStep++;
+						if (calStep < 9) cps[calStep].dot.style.opacity = 1;
+						else {
+							cps.forEach(pp => pp.dot.remove());
+							console.log('Cal complete!');
+							greenDot.style.display = 'block';
+						}
+					};
+				});
+			}, 1000);
+
+		} catch (e) {
+			console.error(e);
+			webgazerRunning = false;
+		}
+	}
+
+	function stopEyeTracking() {
+		try {
+			if (typeof webgazer !== 'undefined') {
+				webgazer.end();
+			}
+		} catch (e) { console.error(e); }
+		webcamVideoEl.pause();
+		webcamVideoEl.srcObject = null;
+		greenDot.style.display = 'none';
+		removeCalibrationPoints();
+		webgazerRunning = false;
+		console.log('Stopped.');
+	}
+
+	function tryStartEyeTracking() {
+		if (typeof webgazer === 'undefined') {
+			console.warn('WebGazer not loaded yet.');
+			return;
+		}
+		startEyeTracking();
+	}
+
+	// Pause/Resume integrations for eye tracking
+	const _origPause = pauseGame;
+	pauseGame = function() { _origPause(); stopEyeTracking(); };
+	const _origResume = resumeGame;
+	resumeGame = function() { _origResume(); if (!paused) tryStartEyeTracking(); };
+
+	document.addEventListener('visibilitychange', () => {
+		if (document.hidden) {
+			stopEyeTracking();
+		} else if (!paused) {
+			tryStartEyeTracking();
+		}
+	});
     </script>
 </body>
 </html>

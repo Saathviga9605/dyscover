@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dyslexia Screening Games</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; margin:0; padding:20px; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:#333; min-height:100vh; }
+        h1,h2 { text-align:center; color:#fff; text-shadow:2px 2px 4px rgba(0,0,0,.3); }
+        h1 { font-size:2.5em; margin-bottom:10px; animation:fadeInDown .8s ease; }
+        @keyframes fadeInDown { from { opacity:0; transform:translateY(-30px); } to { opacity:1; transform:translateY(0); } }
+        .menu { display:flex; justify-content:center; gap:20px; margin:30px 0; flex-wrap:wrap; }
+        .game-btn { padding:20px 35px; background:linear-gradient(135deg,#4CAF50,#45a049); color:#fff; border:none; border-radius:15px; cursor:pointer; font-size:20px; font-weight:bold; box-shadow:0 6px 20px rgba(0,0,0,.3); transition:all .3s ease; position:relative; overflow:hidden; }
+        .game-btn::before { content:''; position:absolute; top:50%; left:50%; width:0; height:0; border-radius:50%; background:rgba(255,255,255,.3); transform:translate(-50%,-50%); transition:width .5s,height .5s; }
+        .game-btn:hover::before { width:300px; height:300px; }
+        .game-btn:hover { transform:translateY(-3px); box-shadow:0 8px 25px rgba(0,0,0,.4); }
+        .debug-toggle { text-align:center; margin:10px 0; }
+        .debug-toggle button { background:rgba(255,255,255,.2); color:#fff; border:2px solid #fff; padding:10px 20px; border-radius:10px; cursor:pointer; font-size:16px; }
+        .game-container { display:none; max-width:1000px; margin:0 auto; background:#fff; padding:40px; border-radius:25px; box-shadow:0 10px 40px rgba(0,0,0,.3); animation:slideIn .5s ease; }
+        .active { display:block; }
+        @keyframes slideIn { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+        .level-header h3 { margin-bottom:10px; color:#667eea; }
+        .progress { background:linear-gradient(135deg,#e3f2fd,#bbdefb); padding:20px; border-radius:15px; font-size:20px; font-weight:bold; margin-bottom:25px; box-shadow:0 4px 10px rgba(0,0,0,.1); border-left:5px solid #2196F3; }
+        .instructions { background:linear-gradient(135deg,#FFF3E0,#FFE0B2); padding:25px; border-radius:15px; margin-bottom:25px; font-style:italic; font-size:17px; border-left:5px solid #FF9800; line-height:1.6; }
+        .subtitle,.story-progress { text-align:center; margin:15px 0; padding:10px; border-radius:10px; }
+        .subtitle { font-size:20px; font-style:italic; color:#666; background:rgba(103,58,183,.1); }
+        .story-progress { font-size:22px; color:#2196F3; font-weight:bold; background:rgba(33,150,243,.1); }
+        .story-so-far { background:linear-gradient(135deg,#F3E5F5,#E1BEE7); padding:25px; border-radius:15px; margin-bottom:25px; font-size:18px; line-height:1.8; border-left:6px solid #9C27B0; }
+        .start-prompt { text-align:center; font-size:20px; margin:20px 0; }
+        .start-btn,.action-btn,.skip-btn,.practice-btn,.next-btn,.restart-btn,.force-next-btn,.level-chip { color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:bold; }
+        .start-btn { background:linear-gradient(135deg,#4CAF50,#45a049); font-size:32px; padding:30px 60px; }
+        .btn-group { display:flex; justify-content:center; gap:15px; margin:20px 0; flex-wrap:wrap; }
+        .action-btn,.skip-btn,.practice-btn { padding:20px 40px; font-size:24px; }
+        .action-btn { background:linear-gradient(135deg,#FF9800,#F57C00); }
+        .action-btn.listening { background:linear-gradient(135deg,#2196F3,#1976D2)!important; animation:pulse 1s infinite; }
+        .practice-btn { background:linear-gradient(135deg,#FF5722,#E64A19); }
+        .skip-btn { background:#9e9e9e; display:none; }
+        .skip-btn.visible { display:inline-block; }
+        .next-btn,.level-chip { background:#2196F3; padding:15px 30px; font-size:20px; display:block; margin:20px auto; }
+        .level-chip { display:inline-block; margin:6px; padding:12px 18px; font-size:16px; }
+        .next-btn:disabled,.action-btn:disabled,.practice-btn:disabled,.skip-btn:disabled,.level-chip:disabled { background:#ccc; cursor:not-allowed; }
+        .task-container { min-height:300px; position:relative; display:flex; align-items:center; justify-content:center; margin:30px 0; }
+        .target { font-size:80px; font-weight:bold; text-align:center; cursor:pointer; padding:30px 50px; border-radius:25px; user-select:none; min-width:250px; box-shadow:0 8px 25px rgba(0,0,0,.15); animation:bounceIn .6s ease; }
+        @keyframes bounceIn { 0% { opacity:0; transform:scale(.3); } 50% { opacity:1; transform:scale(1.05); } 70% { transform:scale(.9); } 100% { transform:scale(1); } }
+        .target.bubble { background:linear-gradient(135deg,#FFD700,#FFA500); border-radius:50%; width:260px; height:260px; display:flex; align-items:center; justify-content:center; font-size:140px!important; }
+        .pair-bubbles { display:flex; gap:24px; align-items:center; justify-content:center; flex-wrap:wrap; }
+        .pair-bubble { background:linear-gradient(135deg,#FFD700,#FFA500); border-radius:50%; width:180px; height:180px; display:flex; align-items:center; justify-content:center; font-size:92px; font-weight:bold; color:#213547; box-shadow:0 8px 25px rgba(0,0,0,.15); }
+        .hidden-prompt { background:linear-gradient(135deg,#e3f2fd,#bbdefb); color:#1b4f72; font-size:34px; line-height:1.4; padding:28px; border-radius:24px; box-shadow:0 8px 25px rgba(0,0,0,.12); }
+        .speed-word { background:linear-gradient(135deg,#ffb347,#ff7043)!important; color:#fff; }
+        .flash-word { animation:flashPulse .7s infinite; }
+        .task-container.distraction-mode::before { content:""; position:absolute; inset:20px; background:repeating-linear-gradient(135deg, rgba(255,152,0,.08) 0 12px, rgba(33,150,243,.08) 12px 24px); border-radius:20px; animation:drift 3s linear infinite; pointer-events:none; }
+        .task-container.distraction-mode::after { content:"noise"; position:absolute; top:12px; right:18px; color:#ff7043; font-weight:bold; letter-spacing:.15em; font-size:14px; opacity:.75; animation:blink 1s steps(2) infinite; pointer-events:none; }
+        @keyframes flashPulse { 0%,100% { transform:scale(1); opacity:1; } 50% { transform:scale(1.08); opacity:.7; } }
+        @keyframes drift { 0% { transform:translateX(0); } 50% { transform:translateX(8px); } 100% { transform:translateX(0); } }
+        @keyframes blink { 0%,100% { opacity:.25; } 50% { opacity:.85; } }
+        .target.word-target { background:linear-gradient(135deg,#66BB6A,#43A047); color:#fff; }
+        .target.word-target.level2 { background:linear-gradient(135deg,#FF9800,#F57C00); display:flex; justify-content:space-around; align-items:center; flex-direction:column; gap:15px; font-size:52px; padding:30px; }
+        .target.word-target.level2 div { background:rgba(255,255,255,.3); padding:15px 30px; border-radius:15px; }
+        .target.sentence-target { background:linear-gradient(135deg,#AB47BC,#8E24AA); color:#fff; font-size:40px; padding:40px; line-height:1.6; }
+        .timer { text-align:center; font-size:32px; font-weight:bold; color:#FF9800; margin:15px 0; padding:15px; background:rgba(255,152,0,.1); border-radius:15px; }
+        .timer.warning { color:#F44336; background:rgba(244,67,54,.15); }
+        .debug-log { background:#f5f5f5; padding:10px; border-radius:5px; font-family:monospace; font-size:12px; max-height:150px; overflow-y:auto; margin-top:10px; display:none; border:1px solid #ddd; }
+        .debug-log.active { display:block; }
+        .debug-header { font-weight:bold; color:#666; margin-bottom:5px; }
+        #level-analytics { margin-top:20px; padding:20px; background:#e8f5e8; border-radius:10px; border-left:5px solid #4caf50; }
+        #level-analytics.fail { background:#ffebee; border-left-color:#f44336; }
+        .results { margin-top:30px; padding:25px; background:#e8f5e8; border-radius:15px; }
+        table { width:100%; border-collapse:collapse; margin:20px 0; }
+        th,td { padding:12px; text-align:left; border-bottom:1px solid #ddd; }
+        th { background:#4caf50; color:#fff; }
+        .particle { position:absolute; width:10px; height:10px; background:#FFD700; border-radius:50%; pointer-events:none; animation:particleFly 1s ease-out forwards; }
+        @keyframes particleFly { 0% { opacity:1; transform:translate(0,0) scale(1); } 100% { opacity:0; transform:translate(var(--tx),var(--ty)) scale(0); } }
+        .confetti { position:absolute; width:10px; height:10px; background:var(--color); animation:confettiFall 3s ease-out forwards; }
+        @keyframes confettiFall { to { transform:translateY(100vh) rotate(720deg); opacity:0; } }
+        .success-animation { animation:successPulse .6s ease; }
+        .error-animation { animation:errorShake .6s ease; }
+        @keyframes successPulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.12); } }
+        @keyframes errorShake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-10px); } 75% { transform:translateX(10px); } }
+        @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.05); } }
+        @media (max-width:768px) { body { padding:12px; } .game-container { padding:22px; } .game-btn,.action-btn,.skip-btn,.practice-btn,.start-btn { width:100%; } .target { min-width:180px; padding:22px; font-size:52px; } }
+    </style>
+</head>
+<body>
+    <h1>🎮 Dyslexia Screening Games</h1>
+    <p style="text-align:center; font-size:18px; color:white; max-width:880px; margin:0 auto 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">
+        Voice-based screening with 3 games and 3 levels each. Levels 2 and 3 unlock only after the previous level is passed.
+    </p>
+    <div class="debug-toggle">
+        <button id="debug-btn" onclick="toggleDebug()">📝 Hide Debug Log</button>
+    </div>
+    <div class="menu">
+        <button class="game-btn" onclick="startGame(1)">🎯 Sound Quest Adventure</button>
+        <button class="game-btn" onclick="startGame(2)">🫧 Letter Bubble Pop</button>
+        <button class="game-btn" onclick="startGame(3)">🌀 Maze Runner Rush</button>
+    </div>
+    <div id="cumulative-report" class="game-container" style="display:none; max-width:1000px; margin-top:20px;">
+        <h2 style="color:#667eea;">📋 Cumulative Report</h2>
+        <div id="cumulative-report-body"></div>
+    </div>
+    <div id="game1" class="game-container">
+        <h2 style="color:#667eea;">🎯 Sound Quest Adventure</h2>
+        <p style="text-align:center; font-size:16px; color:#666; font-style:italic; margin-bottom:20px;">Phonological Awareness • Fluency • Vocabulary</p>
+        <div id="dynamic-level1" class="level"></div>
+        <div id="debug-log1" class="debug-log active"><div class="debug-header">Debug Log (Transcripts & Matches):</div></div>
+        <div id="results1" class="results" style="display:none;"></div>
+    </div>
+    <div id="game2" class="game-container">
+        <h2 style="color:#667eea;">🫧 Letter Bubble Pop</h2>
+        <p style="text-align:center; font-size:16px; color:#666; font-style:italic; margin-bottom:20px;">Visual Dyslexia • Speech Confusion • Rapid Naming</p>
+        <div id="dynamic-level2" class="level"></div>
+        <div id="debug-log2" class="debug-log active"><div class="debug-header">Debug Log (Transcripts & Matches):</div></div>
+        <div id="results2" class="results" style="display:none;"></div>
+    </div>
+    <div id="game3" class="game-container">
+        <h2 style="color:#667eea;">🌀 Maze Runner Rush</h2>
+        <p style="text-align:center; font-size:16px; color:#666; font-style:italic; margin-bottom:20px;">Attention • Working Memory • RAN • Fluency</p>
+        <div id="dynamic-level3" class="level"></div>
+        <div id="debug-log3" class="debug-log active"><div class="debug-header">Debug Log (Transcripts & Matches):</div></div>
+        <div id="results3" class="results" style="display:none;"></div>
+    </div>
+    <script>
+        let recognition = null, currentGame = 0, currentState = null, debugMode = true, currentTimeout = null, timerInterval = null, timeLeft = 15, recognitionStartTime = 0, micPrimed = false, heardSpeechThisRound = false, noSpeechRetryCount = 0, retryTimeoutId = null, lastInterimTranscript = "", recognitionActive = false, recognitionStartPending = false, speechStopTimeoutId = null, maxSpeechRoundTimeoutId = null, promptHideTimeoutId = null, bgAudioCtx = null, bgNoiseNode = null, bgNoiseGain = null;
+        const TASK_TIMEOUT = 18000;
+        const SpeechGrammarListCtor = window.SpeechGrammarList || window.webkitSpeechGrammarList;
+        const letterSounds = { a:["a","ay","eh"], b:["b","bee","be"], c:["c","see"], d:["d","dee"], e:["e","ee"], f:["f","ef"], g:["g","jee"], h:["h","aitch"], i:["i","eye"], j:["j","jay"], k:["k","kay"], l:["l","el"], m:["m","em"], n:["n","en"], o:["o","oh"], p:["p","pee"], q:["q","cue","queue"], r:["r","ar"], s:["s","es"], t:["t","tee"], u:["u","you"], v:["v","vee"], w:["w","double you","doubleyou"], x:["x","ex"], y:["y","why"], z:["z","zee","zed"] };
+        const gameStates = {
+            1: { title:"Sound Quest Adventure", currentLevel:0, unlockedLevel:0, levels:[
+                { name:"Level 1 — Sounds & Simple Words", pool:["cat","dog","pin","bat","mat","sit","top","run","bed","pig"], minTrials:6, threshold:70, type:"word", instructions:"Identify beginning sounds and speak simple CVC words such as cat, dog, and pin. This level targets phonological awareness and basic mispronunciation.", subtitle:"Identify beginning sounds and speak simple CVC words", aliases:{ cat:["cat"], dog:["dog","dog dog"], pin:["pin"], bat:["bat"], mat:["mat"], sit:["sit"], top:["top"], run:["run"], bed:["bed"], pig:["pig","big"] } },
+                { name:"Level 2 — Word Pronunciation & Rhyming", pool:["rabbit","sunny","paper","tiger","pat bat","sip ship","cat hat","run fun"], minTrials:6, threshold:70, type:"word", instructions:"Say 2-syllable words, similar-sounding pairs such as pat/bat and sip/ship, and simple rhymes. This level targets mispronunciation, rhyming, and early fluency.", subtitle:"2-syllable words, sound contrasts, and simple rhymes", aliases:{ rabbit:["rabbit","rabbit rabbit"], sunny:["sunny"], paper:["paper"], tiger:["tiger"], "pat bat":["pat bat","pat, bat","patbat"], "sip ship":["sip ship","sip, ship","sipship"], "cat hat":["cat hat","cat, hat","cathat"], "run fun":["run fun","run, fun","runfun"] } },
+                { name:"Level 3 — Story Unlock", pool:["The red fox ran home.","A little puppy found a bone.","Mina opens the magic gate.","The yellow bird sang loudly.","Sam carries a basket of apples."], minTrials:5, threshold:60, type:"sentence", instructions:"Read short sentences aloud to move the story forward. This level logs pauses, skipped words, and multi-syllable errors and targets fluency, working memory, vocabulary, and word-finding.", subtitle:"Read short sentences aloud to unlock the story", aliases:{ "the red fox ran home":["the red fox ran home","red fox ran home"], "a little puppy found a bone":["little puppy found a bone","puppy found a bone"], "mina opens the magic gate":["mina opens the magic gate","magic gate"], "the yellow bird sang loudly":["yellow bird sang loudly"], "sam carries a basket of apples":["basket of apples","sam carries a basket of apples"] }, storyParts:["The map glows and the trail opens.","A tiny bridge appears across the stream.","The forest lights up with friendly fireflies.","The hidden gate unlocks with a golden spark.","The adventure ends with treasure and cheers."] }
+            ]},
+            2: { title:"Letter Bubble Pop", currentLevel:0, unlockedLevel:0, levels:[
+                { name:"Level 1 — Basic Letter Pop", pool:["a","m","o","s"], minTrials:4, threshold:70, type:"letter", instructions:"Normal letters appear and the child says the letter to pop it. This level targets basic letter-sound mapping.", subtitle:"Basic Letter Pop", aliases:{ a:["a","ay"], m:["m","em"], o:["o","oh"], s:["s","es"] } },
+                { name:"Level 2 — Confusing Letters Pop", pool:["b d","p q","m n","u v"], minTrials:4, threshold:70, type:"letter-pair", instructions:"Confusing letters such as b/d, p/q, m/n, and u/v appear as two similar bubbles at a time. Hesitation and errors indicate visual dyslexia and sound confusion.", subtitle:"Say both similar letters shown together", aliases:{ "b d":["b d","bee dee","b, d"], "p q":["p q","pee cue","p, q"], "m n":["m n","em en","m, n"], "u v":["u v","you vee","u, v"] } },
+                { name:"Level 3 — Rapid Pop", pool:["b","triangle","q","circle","v","square","m","star"], minTrials:6, threshold:65, type:"ran", instructions:"Letters and shapes pop quickly and the child must name them rapidly. Each prompt is displayed only for 5 seconds, then the child gets another 10 seconds to say the word. This level targets rapid naming difficulty and processing speed issues.", subtitle:"Fast RAN mode with 5-second display", hideAfterMs:5000, totalTimeMs:15000, aliases:{ b:["b","bee"], triangle:["triangle"], q:["q","cue"], circle:["circle"], v:["v","vee"], square:["square"], m:["m","em"], star:["star"] } }
+            ]},
+            3: { title:"Maze Runner Rush", currentLevel:0, unlockedLevel:0, levels:[
+                { name:"Level 1 — Slow Flash Naming", pool:["apple","sun","t","book","fish","car"], minTrials:6, threshold:70, type:"word", instructions:"Slow images, letters, and words appear. Name correctly to move forward. This level targets retrieval delays and basic naming issues.", subtitle:"Slow mixed naming round", totalTimeMs:18000, aliases:{ apple:["apple"], sun:["sun"], t:["t","tee"], book:["book"], fish:["fish"], car:["car"] } },
+                { name:"Level 2 — Rapid Naming Pathway", pool:["star","lamp","pen","goat","ring","tree"], minTrials:6, threshold:68, type:"ran", instructions:"Words appear faster and the child has less time to say each one. This level targets quick word recognition, RAN, word-finding, and fluency.", subtitle:"Faster words with less answer time", hideAfterMs:3000, totalTimeMs:8000, fastMode:true, aliases:{ star:["star"], lamp:["lamp"], pen:["pen"], goat:["goat"], ring:["ring"], tree:["tree"] } },
+                { name:"Level 3 — Distraction Maze", pool:["planet","window","basket","silver","garden","rocket"], minTrials:6, threshold:65, type:"word", instructions:"Mild background movement and noise are added. The child must name flashing words under distraction. This level targets attentional dyslexia, skipped words, and inconsistent speech.", subtitle:"Flashing words under distraction", hideAfterMs:2500, totalTimeMs:10000, distractionMode:true, flashMode:true, aliases:{ planet:["planet"], window:["window"], basket:["basket"], silver:["silver"], garden:["garden"], rocket:["rocket"] } }
+            ]}
+        };
+        async function ensureMicrophoneAccess() {
+            if (micPrimed) return true;
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return true;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+                stream.getTracks().forEach(track => track.stop());
+                micPrimed = true;
+                logDebug("Microphone permission granted");
+                return true;
+            } catch (error) {
+                alert("Please allow microphone access in the browser, then try again.");
+                logDebug(`Mic permission failed: ${error.message}`);
+                return false;
+            }
+        }
+        function levelVocabulary() {
+            if (!currentState) return [];
+            const words = new Set();
+            currentState.pool.forEach(item => {
+                const clean = norm(item);
+                if (!clean) return;
+                words.add(clean);
+                clean.split(" ").forEach(word => words.add(word));
+                if (currentState.type === "letter" && letterSounds[clean]) {
+                    letterSounds[clean].forEach(alias => words.add(norm(alias)));
+                }
+            });
+            return [...words].filter(Boolean);
+        }
+        function applyRecognitionGrammar() {
+            if (!recognition || !SpeechGrammarListCtor || !currentState) return;
+            try {
+                const vocab = levelVocabulary().map(item => item.replace(/[^\w\s]/g, "").trim()).filter(Boolean);
+                if (!vocab.length) return;
+                const grammar = `#JSGF V1.0; grammar gamewords; public <word> = ${vocab.join(" | ")} ;`;
+                const grammarList = new SpeechGrammarListCtor();
+                grammarList.addFromString(grammar, 1);
+                recognition.grammars = grammarList;
+                logDebug(`Grammar applied with ${vocab.length} words`);
+            } catch (error) {
+                logDebug(`Grammar setup skipped: ${error.message}`);
+            }
+        }
+        function resetActionButton() {
+            const btn = document.getElementById("action-btn");
+            if (!btn) return;
+            btn.classList.remove("listening");
+            btn.disabled = false;
+            btn.className = "action-btn";
+            btn.textContent = "Speak It";
+            btn.onclick = handleSpeak;
+        }
+        function clearPendingRetry() {
+            if (retryTimeoutId) {
+                clearTimeout(retryTimeoutId);
+                retryTimeoutId = null;
+            }
+        }
+        function clearSpeechStopTimeout() {
+            if (speechStopTimeoutId) {
+                clearTimeout(speechStopTimeoutId);
+                speechStopTimeoutId = null;
+            }
+        }
+        function clearMaxSpeechRoundTimeout() {
+            if (maxSpeechRoundTimeoutId) {
+                clearTimeout(maxSpeechRoundTimeoutId);
+                maxSpeechRoundTimeoutId = null;
+            }
+        }
+        function clearPromptHideTimeout() {
+            if (promptHideTimeoutId) {
+                clearTimeout(promptHideTimeoutId);
+                promptHideTimeoutId = null;
+            }
+        }
+        function stopRecognitionSession() {
+            if (!recognition) return;
+            clearSpeechStopTimeout();
+            clearMaxSpeechRoundTimeout();
+            clearPromptHideTimeout();
+            recognitionStartPending = false;
+            try {
+                if (recognitionActive) recognition.stop();
+            } catch (error) {
+                logDebug(`Recognition stop skipped: ${error.message}`);
+            }
+        }
+        function finalizeAttempt(transcript, confidence, task) {
+            if (currentState.resolvedCurrentAttempt) return;
+            currentState.resolvedCurrentAttempt = true;
+            clearPendingRetry();
+            stopRecognitionSession();
+            resetActionButton();
+            const sim = similarity(transcript, task);
+            const phonSim = phoneticSimilarity(transcript, task);
+            const time = Date.now() - recognitionStartTime;
+            const correct = isCorrect(transcript, task, confidence, currentState.type);
+            currentState.results.push({ trans:transcript, conf:confidence, time, correct, expected:task, action:"speak", sim, phonSim });
+            if (correct && currentState.storyParts) {
+                currentState.unlocked = Math.min((currentState.unlocked || 0) + 1, currentState.storyParts.length);
+                updateStoryProgress();
+            }
+            const target = document.querySelector(".target");
+            if (target) {
+                const rect = target.getBoundingClientRect();
+                const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+                if (correct) {
+                    target.classList.add("success-animation");
+                    playSound("success");
+                    createParticles(x, y, 14, "#4CAF50");
+                } else {
+                    target.classList.add("error-animation");
+                    playSound("error");
+                }
+                setTimeout(() => {
+                    target.classList.remove("success-animation", "error-animation");
+                    advanceTask();
+                }, 900);
+            } else advanceTask();
+        }
+        function initRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition || recognition) return;
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = "en-US";
+            recognition.maxAlternatives = 10;
+            recognition.onstart = () => {
+                recognitionStartPending = false;
+                recognitionActive = true;
+                logDebug("Recognition started");
+                const btn = document.getElementById("action-btn");
+                if (btn) {
+                    btn.textContent = "🔴 Listening...";
+                    btn.disabled = true;
+                    btn.classList.add("listening");
+                }
+            };
+            recognition.onspeechstart = () => {
+                clearSpeechStopTimeout();
+                clearMaxSpeechRoundTimeout();
+                heardSpeechThisRound = true;
+                logDebug("Speech detected");
+                maxSpeechRoundTimeoutId = setTimeout(() => {
+                    logDebug("Force-stopping long speech round");
+                    stopRecognitionSession();
+                }, 2200);
+            };
+            recognition.onspeechend = () => {
+                logDebug("Speech ended");
+                clearSpeechStopTimeout();
+                speechStopTimeoutId = setTimeout(() => {
+                    logDebug("Auto-stopping recognition after speech end");
+                    stopRecognitionSession();
+                }, 700);
+            };
+            recognition.onaudiostart = () => logDebug("Mic active");
+            recognition.onnomatch = () => logDebug("Speech heard but no close match yet");
+            recognition.onend = () => {
+                recognitionActive = false;
+                recognitionStartPending = false;
+                clearSpeechStopTimeout();
+                clearMaxSpeechRoundTimeout();
+                if (!currentState?.resolvedCurrentAttempt && heardSpeechThisRound && lastInterimTranscript) {
+                    logDebug(`Using onend interim fallback: "${lastInterimTranscript}"`);
+                    finalizeAttempt(lastInterimTranscript, 0.35, currentState.tasks[currentState.currentTask]);
+                    return;
+                }
+                if (!currentState?.resolvedCurrentAttempt) resetActionButton();
+                logDebug("Recognition ended");
+            };
+            recognition.onerror = (event) => {
+                recognitionActive = false;
+                recognitionStartPending = false;
+                clearSpeechStopTimeout();
+                clearMaxSpeechRoundTimeout();
+                resetActionButton();
+                logDebug(`Recognition error: ${event.error}`);
+                if (!currentState || currentState.resolvedCurrentAttempt) return;
+                const task = currentState.tasks[currentState.currentTask];
+                if (event.error === "no-speech" && noSpeechRetryCount < 2 && !heardSpeechThisRound) {
+                    noSpeechRetryCount += 1;
+                    logDebug(`No speech detected, retry ${noSpeechRetryCount}`);
+                    retryTimeoutId = setTimeout(() => {
+                        try { recognition.start(); } catch (error) { logDebug(`Retry failed: ${error.message}`); }
+                    }, 500);
+                    return;
+                }
+                if (event.error === "no-speech" && heardSpeechThisRound && lastInterimTranscript) {
+                    logDebug(`Using last interim transcript fallback: "${lastInterimTranscript}"`);
+                    finalizeAttempt(lastInterimTranscript, 0.35, task);
+                    return;
+                }
+                if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+                    alert("Microphone permission is blocked. Please allow microphone access and try again.");
+                    return;
+                }
+                clearPendingRetry();
+                currentState.results.push({ trans:event.error === "no-speech" ? "no speech detected" : event.error, conf:0, time:TASK_TIMEOUT, correct:false, expected:task, action:"error", sim:0, phonSim:0 });
+                currentState.resolvedCurrentAttempt = true;
+                setTimeout(advanceTask, 700);
+            };
+        }
+        function norm(s) { return (s || "").toLowerCase().trim().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " "); }
+        function levenshtein(a, b) {
+            const x = norm(a), y = norm(b), matrix = Array.from({ length:y.length + 1 }, () => Array(x.length + 1).fill(0));
+            for (let i = 0; i <= y.length; i++) matrix[i][0] = i;
+            for (let j = 0; j <= x.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= y.length; i++) for (let j = 1; j <= x.length; j++) matrix[i][j] = y[i - 1] === x[j - 1] ? matrix[i - 1][j - 1] : Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
+            return matrix[y.length][x.length];
+        }
+        function similarity(a, b) {
+            const x = norm(a), y = norm(b);
+            if (!x.length || !y.length) return 0;
+            return 1 - (levenshtein(x, y) / Math.max(x.length, y.length));
+        }
+        function phoneticSimilarity(a, b) {
+            const x = norm(a).replace(/\s+/g, ""), y = norm(b).replace(/\s+/g, "");
+            if (!x.length || !y.length) return 0;
+            if (x === y) return 1;
+            let matches = 0;
+            const pairs = { b:"p", p:"b", d:"t", t:"d", m:"n", n:"m", u:"v", v:"u", q:"k", k:"q", s:"z", z:"s" };
+            for (let i = 0; i < Math.min(x.length, y.length); i++) if (x[i] === y[i] || pairs[x[i]] === y[i]) matches += 1;
+            return matches / Math.max(x.length, y.length);
+        }
+        function tokenize(text) { const value = norm(text); return value ? value.split(" ") : []; }
+        function expectedOptions(expected, type) {
+            const options = new Set();
+            if (type === "letter") {
+                (letterSounds[expected] || [expected]).forEach(item => options.add(norm(item)));
+            } else {
+                options.add(norm(expected));
+                if (expected.includes(" ")) expected.split(" ").filter(Boolean).forEach(item => options.add(norm(item)));
+            }
+            if (currentState?.aliases) {
+                const aliasList = currentState.aliases[expected] || currentState.aliases[norm(expected)] || [];
+                aliasList.forEach(item => options.add(norm(item)));
+            }
+            return [...options].filter(Boolean);
+        }
+        function matchesAliasOption(heard, options) {
+            return options.some(option => {
+                if (!option) return false;
+                if (heard === option || heard.includes(option) || option.includes(heard)) return true;
+                return similarity(heard, option) >= 0.74 || phoneticSimilarity(heard, option) >= 0.74;
+            });
+        }
+        function pairWordMatch(heardWords, targetWords) {
+            return targetWords.filter(word =>
+                heardWords.some(item => similarity(item, word) >= 0.72 || phoneticSimilarity(item, word) >= 0.72)
+            ).length;
+        }
+        function currentLevelRule() {
+            const key = `${currentGame}-${gameStates[currentGame].currentLevel}`;
+            const rules = {
+                "1-0": { wordSim:0.66, wordPhon:0.7, confSim:0.55, confMin:0.2, aliasOnly:false, pairNeedAll:false, sentenceRatio:0.6 },
+                "1-1": { wordSim:0.64, wordPhon:0.68, confSim:0.54, confMin:0.2, aliasOnly:false, pairNeedAll:true, pairSim:0.62, pairPhon:0.66, sentenceRatio:0.6 },
+                "1-2": { wordSim:0.62, wordPhon:0.66, confSim:0.5, confMin:0.2, aliasOnly:false, pairNeedAll:false, sentenceRatio:0.55 },
+                "2-0": { wordSim:0.7, wordPhon:0.7, confSim:0.58, confMin:0.2, aliasOnly:true, pairNeedAll:false, sentenceRatio:0.6 },
+                "2-1": { wordSim:0.74, wordPhon:0.74, confSim:0.6, confMin:0.2, aliasOnly:true, pairNeedAll:false, sentenceRatio:0.6 },
+                "2-2": { wordSim:0.68, wordPhon:0.68, confSim:0.54, confMin:0.18, aliasOnly:false, pairNeedAll:false, sentenceRatio:0.6 },
+                "3-0": { wordSim:0.66, wordPhon:0.68, confSim:0.55, confMin:0.2, aliasOnly:false, pairNeedAll:false, sentenceRatio:0.6 },
+                "3-1": { wordSim:0.66, wordPhon:0.68, confSim:0.54, confMin:0.18, aliasOnly:false, pairNeedAll:false, sentenceRatio:0.6 },
+                "3-2": { wordSim:0.64, wordPhon:0.66, confSim:0.5, confMin:0.18, aliasOnly:false, pairNeedAll:false, sentenceRatio:0.5 }
+            };
+            return rules[key] || { wordSim:0.68, wordPhon:0.68, confSim:0.55, confMin:0.35, aliasOnly:false, pairNeedAll:false, pairSim:0.65, pairPhon:0.68, sentenceRatio:0.6 };
+        }
+        function letterHeuristicMatch(heard, expected) {
+            const normalizedExpected = norm(expected);
+            const aliases = expectedOptions(normalizedExpected, "letter");
+            if (matchesAliasOption(heard, aliases)) return true;
+            const letterSoundsLoose = {
+                a:["a","ay","uh","eh"],
+                l:["l","el","ell","yell"],
+                m:["m","em"],
+                n:["n","en"],
+                t:["t","tee","tea"],
+                f:["f","ef"],
+                s:["s","es"],
+                b:["b","bee","be"],
+                d:["d","dee"],
+                p:["p","pee"],
+                q:["q","cue","queue"],
+                u:["u","you"],
+                v:["v","vee"]
+            };
+            return (letterSoundsLoose[normalizedExpected] || []).some(item => {
+                const clean = norm(item);
+                return heard === clean || heard.includes(clean) || similarity(heard, clean) >= 0.72 || phoneticSimilarity(heard, clean) >= 0.72;
+            });
+        }
+        function isCorrect(transcript, expected, confidence, type) {
+            const heard = norm(transcript), target = norm(expected), sim = similarity(heard, target), phonSim = phoneticSimilarity(heard, target), options = expectedOptions(target, type), rule = currentLevelRule();
+            if (type === "letter" || target.length === 1) return letterHeuristicMatch(heard, target) || sim >= 0.7 || phonSim >= 0.7;
+            if (type === "letter-pair") {
+                const targetLetters = tokenize(target);
+                const heardWords = tokenize(heard);
+                const matchedLetters = targetLetters.filter(letter => heardWords.some(item => letterHeuristicMatch(item, letter))).length;
+                return matchedLetters >= targetLetters.length || matchesAliasOption(heard, options);
+            }
+            if (type === "ran") return matchesAliasOption(heard, options) || sim >= rule.wordSim || phonSim >= rule.wordPhon || (confidence >= rule.confMin && sim >= rule.confSim);
+            if (type === "sentence") {
+                const expectedWords = tokenize(target), heardWords = tokenize(heard);
+                const matches = expectedWords.filter(word => heardWords.some(item => similarity(item, word) >= 0.72 || phoneticSimilarity(item, word) >= 0.72)).length;
+                return matches / Math.max(expectedWords.length, 1) >= rule.sentenceRatio || matchesAliasOption(heard, options) || sim >= rule.wordSim || (confidence >= rule.confMin && sim >= rule.confSim);
+            }
+            if (target.includes(" ")) {
+                const targetWords = tokenize(target), heardWords = tokenize(heard);
+                const matches = pairWordMatch(heardWords, targetWords);
+                const need = rule.pairNeedAll ? targetWords.length : Math.min(2, targetWords.length);
+                return matches >= need || matchesAliasOption(heard, options) || sim >= (rule.pairSim || rule.wordSim) || phonSim >= (rule.pairPhon || rule.wordPhon);
+            }
+            if (rule.aliasOnly) return matchesAliasOption(heard, options) || sim >= rule.wordSim || phonSim >= rule.wordPhon;
+            return matchesAliasOption(heard, options) || heard === target || heard.includes(target) || target.includes(heard) || sim >= rule.wordSim || phonSim >= rule.wordPhon || (confidence >= rule.confMin && sim >= rule.confSim);
+        }
+        function logDebug(msg) {
+            const logEl = document.getElementById(`debug-log${currentGame}`);
+            if (logEl && debugMode) {
+                logEl.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${msg}</div>`;
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+            console.log(msg);
+        }
+        function toggleDebug() {
+            debugMode = !debugMode;
+            document.getElementById("debug-btn").textContent = debugMode ? "📝 Hide Debug Log" : "🔍 Show Debug Log";
+            document.querySelectorAll(".debug-log").forEach(el => el.classList.toggle("active", debugMode));
+        }
+        function stopTimer() {
+            clearInterval(timerInterval);
+            clearTimeout(currentTimeout);
+            clearPromptHideTimeout();
+            timeLeft = 15;
+            const timerEl = document.getElementById("timer");
+            if (timerEl) {
+                timerEl.style.display = "none";
+                timerEl.classList.remove("warning");
+            }
+            hideSkip();
+        }
+        function updateTimer() {
+            const timerEl = document.getElementById("timer");
+            if (!timerEl) return;
+            timerEl.style.display = "block";
+            timerEl.textContent = `⏱️ Time left: ${timeLeft}s`;
+            if (timeLeft <= 5) timerEl.classList.add("warning");
+            else timerEl.classList.remove("warning");
+        }
+        function startTimer(totalMs = TASK_TIMEOUT) {
+            stopTimer();
+            timeLeft = Math.ceil(totalMs / 1000);
+            updateTimer();
+            timerInterval = setInterval(() => {
+                timeLeft -= 1;
+                updateTimer();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    showSkip();
+                }
+            }, 1000);
+        }
+        function showSkip() {
+            const skipBtn = document.getElementById("skip-btn");
+            if (skipBtn) skipBtn.classList.add("visible");
+        }
+        function hideSkip() {
+            const skipBtn = document.getElementById("skip-btn");
+            if (skipBtn) skipBtn.classList.remove("visible");
+        }
+        function createParticles(x, y, count, color) {
+            const container = document.querySelector(".task-container");
+            if (!container) return;
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement("div");
+                particle.className = "particle";
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                particle.style.background = color;
+                particle.style.setProperty("--tx", `${(Math.random() - 0.5) * 200}px`);
+                particle.style.setProperty("--ty", `${(Math.random() - 0.5) * 200}px`);
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1000);
+            }
+        }
+        function createConfetti() {
+            const container = document.querySelector(".game-container.active");
+            if (!container) return;
+            const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
+            for (let i = 0; i < 40; i++) {
+                const confetti = document.createElement("div");
+                confetti.className = "confetti";
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.top = "-10px";
+                confetti.style.setProperty("--color", colors[Math.floor(Math.random() * colors.length)]);
+                container.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 3000);
+            }
+        }
+        function playSound(type) {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                if (type === "success") {
+                    oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.08);
+                    oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.16);
+                } else if (type === "error") {
+                    oscillator.frequency.setValueAtTime(180, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(130, audioContext.currentTime + 0.1);
+                } else {
+                    oscillator.frequency.setValueAtTime(700, audioContext.currentTime);
+                }
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (error) {
+                console.log("Audio skipped", error);
+            }
+        }
+        function stopBackgroundSound() {
+            try {
+                if (bgNoiseNode) {
+                    bgNoiseNode.stop();
+                    bgNoiseNode.disconnect();
+                }
+            } catch (error) {
+                console.log("Background sound stop skipped", error);
+            }
+            try {
+                if (bgNoiseGain) bgNoiseGain.disconnect();
+            } catch (error) {
+                console.log("Background gain cleanup skipped", error);
+            }
+            bgNoiseNode = null;
+            bgNoiseGain = null;
+        }
+        function startBackgroundSound() {
+            stopBackgroundSound();
+            try {
+                bgAudioCtx = bgAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                const duration = 2;
+                const sampleRate = bgAudioCtx.sampleRate;
+                const buffer = bgAudioCtx.createBuffer(1, sampleRate * duration, sampleRate);
+                const data = buffer.getChannelData(0);
+                let last = 0;
+                for (let i = 0; i < data.length; i++) {
+                    const white = Math.random() * 2 - 1;
+                    last = (last + (0.02 * white)) / 1.02;
+                    data[i] = last * 2.8;
+                }
+                const source = bgAudioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.loop = true;
+                const lowpass = bgAudioCtx.createBiquadFilter();
+                lowpass.type = "lowpass";
+                lowpass.frequency.value = 420;
+                const gain = bgAudioCtx.createGain();
+                gain.gain.value = 0.012;
+                source.connect(lowpass);
+                lowpass.connect(gain);
+                gain.connect(bgAudioCtx.destination);
+                source.start();
+                bgNoiseNode = source;
+                bgNoiseGain = gain;
+            } catch (error) {
+                console.log("Background sound unavailable", error);
+            }
+        }
+        function computeScore(state) {
+            const total = state.results.length;
+            if (!total) return { score:0, acc:0, avgTime:0 };
+            const corrects = state.results.filter(item => item.correct).length;
+            const acc = (corrects / total) * 100;
+            const avgTime = state.results.reduce((sum, item) => sum + item.time, 0) / total;
+            let speedScore = 0;
+            if (avgTime <= 3000) speedScore = 15;
+            else if (avgTime <= 5000) speedScore = 10;
+            else if (avgTime <= 8000) speedScore = 5;
+            else if (avgTime <= 12000) speedScore = 0;
+            else speedScore = -10;
+            return { score:Math.max(0, Math.min(100, Math.round(acc + speedScore))), acc, avgTime };
+        }
+        function getIssues(results) {
+            const issues = new Set();
+            results.forEach(item => {
+                if (!item.correct && item.action === "speak") issues.add("Mismatch or pronunciation difficulty");
+                if (item.action === "error") issues.add("Speech not captured");
+                if (item.time > 10000) issues.add("Slow response time");
+                if (item.expected && norm(item.expected).split(" ").length > 1 && !item.correct) issues.add("Multi-word or fluency difficulty");
+            });
+            return Array.from(issues);
+        }
+        function shuffle(array) { return [...array].sort(() => Math.random() - 0.5); }
+        function saveCurrentResults() {
+            const gs = gameStates[currentGame];
+            gs.levels[gs.currentLevel].results = [...currentState.results];
+        }
+        function updateStoryProgress() {
+            const storyEl = document.getElementById("story-so-far");
+            const unlockedEl = document.getElementById("unlocked-cnt");
+            if (unlockedEl) unlockedEl.textContent = currentState.unlocked || 0;
+            if (!storyEl || !currentState.storyParts) return;
+            if (!currentState.unlocked) {
+                storyEl.innerHTML = "<strong>Story Locked</strong><br>Read each sentence correctly to unlock the adventure.";
+                return;
+            }
+            storyEl.innerHTML = `<strong>Story So Far</strong><br><br>${currentState.storyParts.slice(0, currentState.unlocked).join(" ")}`;
+        }
+        function handleStart() {
+            currentState.started = true;
+            document.getElementById("start-prompt").style.display = "none";
+            document.getElementById("current-task").style.display = "flex";
+            document.querySelector(".btn-group").style.display = "flex";
+            document.getElementById("next-btn").style.display = "block";
+            showTask();
+        }
+        function addPracticeTrial() {
+            if (!currentState.practiceMode) return;
+            const nextTask = currentState.pool.find(item => !currentState.tasks.includes(item)) || currentState.pool[Math.floor(Math.random() * currentState.pool.length)];
+            currentState.tasks.push(nextTask);
+            currentState.currentTask = currentState.tasks.length - 1;
+            showTask();
+        }
+        function forceNextLevel() { saveCurrentResults(); nextLevel(); }
+        async function handleSpeak() {
+            if (!currentState?.started) return;
+            if (!recognition) {
+                alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+                return;
+            }
+            if (recognitionActive || recognitionStartPending) {
+                logDebug("Speak ignored because recognition is already starting or active");
+                return;
+            }
+            recognitionStartPending = true;
+            const speakBtn = document.getElementById("action-btn");
+            if (speakBtn) {
+                speakBtn.disabled = true;
+                speakBtn.textContent = "Starting mic...";
+            }
+            const micOk = await ensureMicrophoneAccess();
+            if (!micOk) {
+                recognitionStartPending = false;
+                resetActionButton();
+                return;
+            }
+            clearPendingRetry();
+            stopRecognitionSession();
+            currentState.resolvedCurrentAttempt = false;
+            heardSpeechThisRound = false;
+            noSpeechRetryCount = 0;
+            lastInterimTranscript = "";
+            stopTimer();
+            recognitionStartTime = Date.now();
+            const task = currentState.tasks[currentState.currentTask];
+            applyRecognitionGrammar();
+            logDebug(`Listening for fixed prompt: "${task}"`);
+            recognition.onresult = (event) => {
+                const result = event.results[event.results.length - 1];
+                if (!result || currentState.resolvedCurrentAttempt) return;
+                if (!result.isFinal) {
+                    const interimText = Array.from(result).map(item => item.transcript || "").join(" ").trim();
+                    if (interimText) {
+                        lastInterimTranscript = interimText;
+                        logDebug(`Interim: "${interimText}"`);
+                    }
+                    return;
+                }
+                let bestMatch = null, bestScore = -1;
+                for (let i = 0; i < result.length; i++) {
+                    const alt = result[i], transcript = alt.transcript || "", confidence = typeof alt.confidence === "number" ? alt.confidence : 0;
+                    const sim = similarity(transcript, task), phonSim = phoneticSimilarity(transcript, task), rank = (confidence * 0.4) + (sim * 0.35) + (phonSim * 0.25);
+                    if (rank > bestScore) { bestScore = rank; bestMatch = { transcript, confidence, sim, phonSim }; }
+                    logDebug(`Alt ${i + 1}: "${transcript}" conf=${confidence.toFixed(2)} sim=${sim.toFixed(2)} phon=${phonSim.toFixed(2)}`);
+                }
+                lastInterimTranscript = bestMatch.transcript;
+                finalizeAttempt(bestMatch.transcript, bestMatch.confidence, task);
+            };
+            setTimeout(() => {
+                if (recognitionActive) {
+                    logDebug("Recognition still active, waiting before restart");
+                    recognitionStartPending = false;
+                    return;
+                }
+                try {
+                    recognition.start();
+                } catch (error) {
+                    recognitionStartPending = false;
+                    resetActionButton();
+                    logDebug(`Recognition start failed: ${error.message}`);
+                }
+            }, 120);
+        }
+        function handleSkip(correct = false) {
+            if (!currentState?.started) return;
+            stopTimer();
+            currentState.resolvedCurrentAttempt = true;
+            const task = currentState.tasks[currentState.currentTask];
+            currentState.results.push({ trans:"skip", conf:0, time:TASK_TIMEOUT, correct, expected:task, action:"skip", sim:0, phonSim:0 });
+            setTimeout(advanceTask, 400);
+        }
+        function advanceTask() {
+            currentState.currentTask += 1;
+            if (currentState.currentTask < currentState.tasks.length) showTask();
+            else updateProgress();
+        }
+        function renderTask(task) {
+            let targetClass = "target", displayText = task;
+            if (currentState.type === "letter") targetClass += " bubble";
+            else if (currentState.type === "letter-pair") {
+                const letters = task.split(" ").filter(Boolean);
+                return `<div class="pair-bubbles" onclick="handleSkip(true); playSound('click');">${letters.map(letter => `<div class="pair-bubble">${letter}</div>`).join("")}</div>`;
+            }
+            else if (currentState.type === "word" || currentState.type === "ran") targetClass += " word-target";
+            else if (currentState.type === "sentence") targetClass += " sentence-target";
+            if (currentState.fastMode) targetClass += " speed-word";
+            if (currentState.flashMode) targetClass += " flash-word";
+            if ((currentState.type === "word" || currentState.type === "ran") && task.includes(" ")) {
+                targetClass += " level2";
+                displayText = task.split(" ").map(word => `<div>${word}</div>`).join("");
+            }
+            return `<div class="${targetClass}" onclick="handleSkip(true); playSound('click');">${displayText}</div>`;
+        }
+        function showTask() {
+            clearPendingRetry();
+            stopRecognitionSession();
+            clearPromptHideTimeout();
+            recognitionStartPending = false;
+            resetActionButton();
+            currentState.resolvedCurrentAttempt = false;
+            heardSpeechThisRound = false;
+            noSpeechRetryCount = 0;
+            lastInterimTranscript = "";
+            const task = currentState.tasks[currentState.currentTask];
+            const taskEl = document.getElementById("current-task");
+            taskEl.classList.toggle("distraction-mode", !!currentState.distractionMode);
+            taskEl.innerHTML = renderTask(task);
+            const totalTime = currentState.totalTimeMs || TASK_TIMEOUT;
+            startTimer(totalTime);
+            if (currentState.hideAfterMs) {
+                promptHideTimeoutId = setTimeout(() => {
+                    if (taskEl && !currentState.resolvedCurrentAttempt) {
+                        taskEl.innerHTML = `<div class="target hidden-prompt">${currentState.distractionMode ? "Keep focus and say the word now" : "Say the word now"}</div>`;
+                        logDebug(`Prompt hidden after ${Math.round(currentState.hideAfterMs / 1000)} seconds, answer window still open`);
+                    }
+                }, currentState.hideAfterMs);
+            }
+            currentTimeout = setTimeout(() => {
+                if (!currentState.resolvedCurrentAttempt) showSkip();
+            }, totalTime);
+            logDebug(`Task shown: ${task}`);
+        }
+        function updateProgress() {
+            stopTimer();
+            const sc = computeScore(currentState);
+            document.getElementById("trials-cnt").textContent = currentState.results.length;
+            document.getElementById("score-cnt").textContent = `${sc.score}%`;
+            const actionBtn = document.getElementById("action-btn"), skipBtn = document.getElementById("skip-btn"), nextBtn = document.getElementById("next-btn"), analyticsEl = document.getElementById("level-analytics");
+            saveCurrentResults();
+            if (currentState.results.length >= currentState.minTrials) {
+                actionBtn.disabled = true;
+                actionBtn.textContent = "Level Passed";
+                skipBtn.disabled = true;
+                nextBtn.disabled = false;
+                currentState.practiceMode = false;
+                gameStates[currentGame].unlockedLevel = Math.max(gameStates[currentGame].unlockedLevel, gameStates[currentGame].currentLevel + 1);
+                showMiniAnalytics(sc, true);
+            } else analyticsEl.style.display = "none";
+        }
+        function showMiniAnalytics(sc, passed) {
+            const analyticsEl = document.getElementById("level-analytics"), issues = getIssues(currentState.results);
+            analyticsEl.className = passed ? "" : "fail";
+            analyticsEl.innerHTML = `<h4>${passed ? "Level Complete" : "Keep Practicing"}</h4><p><strong>Accuracy:</strong> ${sc.acc.toFixed(1)}%</p><p><strong>Average Time:</strong> ${Math.round(sc.avgTime)} ms</p><p><strong>Final Score:</strong> ${sc.score}%</p><p><strong>Issues:</strong> ${issues.length ? issues.join(", ") : "None detected"}</p>${passed ? "<p><em>Trials complete. Next level is now unlocked.</em></p>" : '<button class="restart-btn" onclick="restartCurrentLevel()">Restart Level</button><button class="force-next-btn" onclick="forceNextLevel()">Force Next Level</button>'}`;
+            analyticsEl.style.display = "block";
+            if (passed) createConfetti();
+        }
+        function restartCurrentLevel() { loadLevel(currentGame, gameStates[currentGame].currentLevel); }
+        function levelReportRow(level) {
+            const results = level.results || [];
+            const sc = computeScore({ results });
+            const issues = getIssues(results);
+            return {
+                name: level.name,
+                trials: results.length,
+                accuracy: sc.acc.toFixed(1),
+                avgTime: Math.round(sc.avgTime || 0),
+                score: sc.score,
+                issues: issues.length ? issues.join(", ") : "None"
+            };
+        }
+        function reportRisk(score) {
+            if (score >= 80) return "LOW RISK";
+            if (score >= 60) return "MEDIUM RISK";
+            return "HIGH RISK";
+        }
+        function renderIndividualReport(g) {
+            const gs = gameStates[g];
+            const rows = gs.levels.map(levelReportRow);
+            const validScores = rows.filter(row => row.trials > 0).map(row => row.score);
+            const overall = validScores.length ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 0;
+            const findings = [...new Set(gs.levels.flatMap(level => getIssues(level.results || [])))];
+            return `
+                <h3>Individual Report</h3>
+                <table>
+                    <tr><th>Level</th><th>Trials</th><th>Accuracy %</th><th>Avg Time (ms)</th><th>Score</th><th>Issues</th></tr>
+                    ${rows.map(row => `<tr><td>${row.name}</td><td>${row.trials}</td><td>${row.accuracy}%</td><td>${row.avgTime}</td><td>${row.score}%</td><td>${row.issues}</td></tr>`).join("")}
+                </table>
+                <p style="font-size:24px; font-weight:bold;">Game Score: ${overall}%</p>
+                <p style="font-size:20px; padding:15px; background:#fff3cd; border-radius:10px; border-left:5px solid #ffc107;">${reportRisk(overall)}</p>
+                <p><strong>Summary:</strong> ${findings.length ? findings.join(", ") : "No major issues detected."}</p>
+            `;
+        }
+        function allGamesCompleted() {
+            return [1, 2, 3].every(id => gameStates[id].levels.every(level => (level.results || []).length >= level.minTrials));
+        }
+        function renderCumulativeReport() {
+            if (!allGamesCompleted()) return;
+            const cumulativeEl = document.getElementById("cumulative-report");
+            const bodyEl = document.getElementById("cumulative-report-body");
+            const gameSummaries = [1, 2, 3].map(id => {
+                const gs = gameStates[id];
+                const scores = gs.levels.map(level => computeScore({ results: level.results || [] }).score);
+                return {
+                    title: gs.title,
+                    score: scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0,
+                    findings: [...new Set(gs.levels.flatMap(level => getIssues(level.results || [])))]
+                };
+            });
+            const cumulativeScore = Math.round(gameSummaries.reduce((sum, item) => sum + item.score, 0) / gameSummaries.length);
+            const totalFindings = [...new Set(gameSummaries.flatMap(item => item.findings))];
+            bodyEl.innerHTML = `
+                <table>
+                    <tr><th>Game</th><th>Score</th><th>Key Findings</th></tr>
+                    ${gameSummaries.map(item => `<tr><td>${item.title}</td><td>${item.score}%</td><td>${item.findings.length ? item.findings.join(", ") : "None"}</td></tr>`).join("")}
+                </table>
+                <p style="font-size:24px; font-weight:bold;">Cumulative Score: ${cumulativeScore}%</p>
+                <p style="font-size:20px; padding:15px; background:#fff3cd; border-radius:10px; border-left:5px solid #ffc107;">${reportRisk(cumulativeScore)}</p>
+                <p><strong>Overall Findings:</strong> ${totalFindings.length ? totalFindings.join(", ") : "No major issues detected across all games."}</p>
+            `;
+            cumulativeEl.style.display = "block";
+        }
+        function buildLevelSelector(g) {
+            const gs = gameStates[g];
+            return gs.levels.map((level, index) => {
+                const unlocked = index <= gs.unlockedLevel;
+                const done = !!level.results?.length && level.results.length >= level.minTrials;
+                return `<button class="level-chip" style="background:${unlocked ? "#4CAF50" : "#bdbdbd"};" ${unlocked ? `onclick="loadLevel(${g}, ${index})"` : "disabled"}>${done ? "Done " : ""}Level ${index + 1}${unlocked ? "" : " Locked"}</button>`;
+            }).join("");
+        }
+        function loadLevel(g, l) {
+            if (l > gameStates[g].unlockedLevel) {
+                alert("Finish the previous level first to unlock this one.");
+                return;
+            }
+            stopTimer();
+            stopBackgroundSound();
+            currentGame = g;
+            const gs = gameStates[g], state = gs.levels[l];
+            gs.currentLevel = l;
+            currentState = { ...state, tasks:shuffle(state.pool).slice(0, state.minTrials), results:state.results ? [...state.results] : [], currentTask:0, started:false, practiceMode:false, resolvedCurrentAttempt:false, unlocked:state.results ? state.results.filter(item => item.correct).length : 0, storyParts:state.storyParts || null };
+            if (currentState.distractionMode) startBackgroundSound();
+            document.getElementById(`dynamic-level${g}`).innerHTML = `<div class="level-header"><h3>${state.name}</h3><div style="text-align:center; margin-bottom:18px;">${buildLevelSelector(g)}</div><div class="progress">Trials: <span id="trials-cnt">${currentState.results.length}</span> / <span id="min-trials">${state.minTrials}</span> | Score: <span id="score-cnt">${computeScore(currentState).score}%</span> | Complete all trials to unlock next level${currentState.storyParts ? `<div class="story-progress">Story Progress: <span id="unlocked-cnt">${currentState.unlocked}</span> / ${currentState.storyParts.length}</div>` : ""}</div>${state.subtitle ? `<div class="subtitle">${state.subtitle}</div>` : ""}</div><div class="instructions">${state.instructions}</div>${currentState.storyParts ? '<div id="story-so-far" class="story-so-far"></div>' : ""}<div class="start-prompt" id="start-prompt"><p>Ready? Click below to start the level and reveal the first task.</p><button id="start-btn" class="start-btn" onclick="handleStart()">Start Level</button></div><div id="timer" class="timer" style="display:none;"></div><div id="current-task" class="task-container" style="display:none;"></div><div class="btn-group" style="display:none;"><button id="action-btn" class="action-btn" onclick="handleSpeak()">Speak It</button><button id="skip-btn" class="skip-btn" onclick="handleSkip(false)">Skip</button></div><button id="next-btn" class="next-btn" disabled style="display:none;" onclick="nextLevel()">Next Level</button><div id="level-analytics" style="display:none;"></div>`;
+            document.getElementById(`debug-log${g}`).innerHTML = '<div class="debug-header">Debug Log (Transcripts & Matches):</div>';
+            document.getElementById(`results${g}`).style.display = "none";
+            if (currentState.storyParts) updateStoryProgress();
+            const sc = computeScore(currentState);
+            if (currentState.results.length >= currentState.minTrials) showMiniAnalytics(sc, true);
+            logDebug(`Loaded ${state.name}`);
+        }
+        function nextLevel() {
+            saveCurrentResults();
+            const gs = gameStates[currentGame], next = gs.currentLevel + 1;
+            if (next >= gs.levels.length) showResults(currentGame);
+            else loadLevel(currentGame, next);
+        }
+        function showResults(g) {
+            stopTimer();
+            const resDiv = document.getElementById(`results${g}`);
+            resDiv.innerHTML = `${renderIndividualReport(g)}<button class="next-btn" onclick="startGame(${g})">Replay Game</button>`;
+            resDiv.style.display = "block";
+            renderCumulativeReport();
+        }
+        function startGame(g) {
+            document.querySelectorAll(".game-container").forEach(el => {
+                el.style.display = "none";
+                el.classList.remove("active");
+            });
+            stopBackgroundSound();
+            [1, 2, 3].forEach(id => {
+                if (id !== g) {
+                    document.getElementById(`dynamic-level${id}`).innerHTML = "";
+                    document.getElementById(`results${id}`).style.display = "none";
+                }
+            });
+            const container = document.getElementById(`game${g}`);
+            container.style.display = "block";
+            container.classList.add("active");
+            currentGame = g;
+            loadLevel(g, gameStates[g].currentLevel);
+        }
+        initRecognition();
+    </script>
+</body>
+</html>

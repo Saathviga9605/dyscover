@@ -122,9 +122,24 @@ button {
     75% {transform: translateY(-5px) rotate(3deg);}
     100% {transform: translateY(0);}
 }
+/* Ensure calibration points are clickable */
+.calibration-point { pointer-events: auto; }
+/* Camera help overlay */
+#camera-help {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display:flex; align-items:center; justify-content:center; z-index:1200;
+}
+#camera-help .card {
+    background: rgba(0,0,0,0.85); color: #fff; padding: 18px; border-radius: 12px;
+    max-width: 520px; text-align:left; box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+}
+#camera-help button { margin-top:12px; }
 </style>
+    <!-- WebGazer -->
+    <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
 </head>
 <body>
+<video id="webcam" autoplay playsinline muted style="position: fixed; top: 10px; right: 10px; width: 150px; height: 100px; border: 2px solid #ccc; border-radius: 8px; z-index: 1000; background: black;"></video>
 <div id="game-panel">
     <div id="progress-bar-container">
         <div id="progress-bar-fill"></div>
@@ -150,10 +165,31 @@ button {
         <button id="restart-btn">Restart</button>
     </div>
     <div id="start-screen"><h1>Level 2</h1><p>Sequencing & Working Memory</p><button id="start-btn">Start</button></div>
-    <div id="game-over-screen" class="hidden"><h1>Well Done!</h1><p>Your score: <span id="final-score">0</span></p><button id="play-again">Play Again</button></div>
+    <div id="game-over-screen" class="hidden">
+        <h1>Well Done!</h1>
+        <p>Your score: <span id="final-score">0</span></p>
+        <div id="dyslexia-assessment" style="margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px; text-align: center;">
+            <h3 style="margin: 0 0 10px 0; color: #ffd700;">Dyslexia Assessment</h3>
+            <p style="margin: 5px 0; font-size: 18px;">Probability: <span id="dyslexia-probability">0%</span></p>
+            <p id="dyslexia-message" style="margin: 5px 0; font-size: 14px; opacity: 0.9;"></p>
+        </div>
+        <button id="play-again">Play Again</button>
+    </div>
     <div id="score">Score: 0</div>
     <div id="feedback"></div>
 </div>
+<div id="camera-help" style="display:none;">
+    <div class="card">
+        <h3 style="margin-top:0;">Camera access required</h3>
+        <p id="camera-help-msg">The page could not open your camera. This can happen if permissions were denied, the camera is in use by another app, or the page is not recognized as secure. If you're using an ngrok tunnel, ensure you opened the HTTPS URL and allowed camera access for that origin.</p>
+        <p style="font-size:12px;opacity:0.9;">Error: <span id="camera-help-error">(unknown)</span></p>
+        <div style="display:flex; gap:8px;">
+            <button id="camera-retry">Retry</button>
+            <button id="camera-dismiss">Dismiss</button>
+        </div>
+    </div>
+</div>
+<div id="gaze-dot" style="position: fixed; width: 10px; height: 10px; background: limegreen; border: 2px solid darkgreen; border-radius: 50%; pointer-events: none; z-index: 999; display: none; transition: all 0.1s ease;"></div>
 <script>
 /* References & State */
 const gamePanel = document.getElementById('game-panel');
@@ -176,11 +212,50 @@ const animalDialogue = document.getElementById('animal-dialogue');
 let score=0,currentChallenge=0,selectedChallenges=[];
 let paused=false,challengeActive=false;
 let timeouts=[],timerInterval=null,timeLeft=0;
+let trialCounter = 0;
+let csvRows = [];
+let trialExported = false;
+let currentTrialContext = { challengeType: "", targetText: "" };
+
+const CSV_HEADER = [
+    "Trial_ID",
+    "Challenge_Type",
+    "Target_Text",
+    "Mean_Fixation_ms",
+    "Max_Fixation_ms",
+    "Fixation_Count",
+    "Target_Fixation_ms",
+    "Distractor_Fixation_ms",
+    "Distractor_Target_Ratio",
+    "TTFF_ms",
+    "Fixation_Switches",
+    "Reaction_Time_ms",
+    "Hesitation_Time_ms",
+    "Total_Clicks",
+    "Mis_Clicks",
+    "Accuracy",
+    "Final_Fixation",
+    "Score_After_Trial",
+    "Saccade_Variance",
+    "Regression_Count",
+    "Scanpath_Entropy",
+    "Horizontal_Saccade_Bias",
+    "Timestamp"
+].join(",");
+
+const JITTER_RADIUS = 35;
+const FIXATION_RADIUS = 40;
+const FIXATION_MIN_DURATION = 100;
+
+let gazeFixation = null;
+let fixations = [];
+let trialData = {};
 
 /* Helpers */
 function clearAllScheduled(){while(timeouts.length)clearTimeout(timeouts.pop());clearInterval(timerInterval);timerInterval=null;}
 function clearGameArea(){
     document.querySelectorAll('.challenge-prompt,.sequence-container,.grid-container,.word-order-container').forEach(el=>el.remove());
+    document.querySelectorAll('.calibration-point').forEach(el=>el.remove());
     feedbackEl.style.display='none';
     timerEl.textContent="Time: 00:00";
 }
@@ -194,10 +269,271 @@ function showFeedback(txt){feedbackEl.textContent=txt;feedbackEl.style.display='
 function startTimer(seconds,onExpire){clearInterval(timerInterval);timeLeft=seconds;updateTimerDisplay();timerInterval=setInterval(()=>{if(!paused){timeLeft--;updateTimerDisplay();if(timeLeft<=0){clearInterval(timerInterval);timerInterval=null;showFeedback("Time's up!");timeouts.push(setTimeout(onExpire,1000));}}},1000);}
 function updateTimerDisplay(){let m=Math.floor(timeLeft/60),s=timeLeft%60;timerEl.textContent=`Time: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;}
 
+function resetTrialData() {
+    fixations = [];
+    gazeFixation = null;
+    trialExported = false;
+    trialData = {
+        startTime: performance.now(),
+        firstFixationTime: null,
+        targetFixationTime: 0,
+        distractorFixationTime: 0,
+        fixationCount: 0,
+        fixationSwitches: 0,
+        lastFixationType: null,
+        clicks: 0,
+        misClicks: 0,
+        reactionTime: 0,
+        hesitationTime: 0,
+        finalFixation: null,
+        accuracyOverride: null,
+        clicksOverride: null,
+        misClicksOverride: null
+    };
+}
+
+function setCurrentTrialContext(challengeType, targetText) {
+    currentTrialContext = { challengeType, targetText };
+    resetTrialData();
+}
+
+function flushCurrentFixation() {
+    if (!gazeFixation) return;
+    const duration = performance.now() - gazeFixation.start;
+    if (duration >= FIXATION_MIN_DURATION) {
+        registerFixation(gazeFixation.x, gazeFixation.y, duration);
+    }
+    gazeFixation = null;
+}
+
+function getTrackableElements() {
+    return Array.from(document.querySelectorAll('.sequence-item, .word-item, .grid-cell, .bubble'));
+}
+
+function classifyFixation(x, y) {
+    for (const el of getTrackableElements()) {
+        if (!el.isConnected) continue;
+        const rect = el.getBoundingClientRect();
+        if (
+            x >= rect.left - JITTER_RADIUS &&
+            x <= rect.right + JITTER_RADIUS &&
+            y >= rect.top - JITTER_RADIUS &&
+            y <= rect.bottom + JITTER_RADIUS
+        ) {
+            if (!el.dataset.correct) return 'neutral';
+            return el.dataset.correct === 'true' ? 'target' : 'distractor';
+        }
+    }
+    return 'none';
+}
+
+function registerFixation(x, y, duration) {
+    const type = classifyFixation(x, y);
+
+    fixations.push({ x, y, duration, type });
+    trialData.fixationCount++;
+
+    if (type === 'target') {
+        trialData.targetFixationTime += duration;
+        if (trialData.firstFixationTime === null) {
+            trialData.firstFixationTime = performance.now() - trialData.startTime;
+        }
+    }
+
+    if (type === 'distractor') {
+        trialData.distractorFixationTime += duration;
+    }
+
+    if (trialData.lastFixationType && trialData.lastFixationType !== type) {
+        trialData.fixationSwitches++;
+    }
+
+    trialData.lastFixationType = type;
+    trialData.finalFixation = type;
+}
+
+function processGazePoint(x, y, t) {
+    if (!gazeFixation) {
+        gazeFixation = { x, y, start: t, samples: 1 };
+        return;
+    }
+
+    const dx = x - gazeFixation.x;
+    const dy = y - gazeFixation.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist <= FIXATION_RADIUS) {
+        gazeFixation.x = (gazeFixation.x * gazeFixation.samples + x) / (gazeFixation.samples + 1);
+        gazeFixation.y = (gazeFixation.y * gazeFixation.samples + y) / (gazeFixation.samples + 1);
+        gazeFixation.samples++;
+    } else {
+        const duration = t - gazeFixation.start;
+        if (duration >= FIXATION_MIN_DURATION) {
+            registerFixation(gazeFixation.x, gazeFixation.y, duration);
+        }
+        gazeFixation = { x, y, start: t, samples: 1 };
+    }
+}
+
+function computeSaccadeMetrics(items) {
+    if (items.length < 2) {
+        return {
+            saccadeVariance: "",
+            regressionCount: "",
+            entropy: "",
+            horizontalBias: ""
+        };
+    }
+
+    const BIN_SIZE = 100;
+    const saccadeLengths = [];
+    const bins = {};
+    let regressions = 0;
+    let horizontalMoves = 0;
+
+    for (let i = 1; i < items.length; i++) {
+        const dx = items[i].x - items[i - 1].x;
+        const dy = items[i].y - items[i - 1].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        saccadeLengths.push(dist);
+
+        if (Math.abs(dx) > Math.abs(dy)) horizontalMoves++;
+
+        if (i >= 2) {
+            const prevDx = items[i - 1].x - items[i - 2].x;
+            if (Math.sign(dx) !== Math.sign(prevDx)) regressions++;
+        }
+
+        const bx = Math.floor(items[i].x / BIN_SIZE);
+        const by = Math.floor(items[i].y / BIN_SIZE);
+        const key = `${bx},${by}`;
+        bins[key] = (bins[key] || 0) + 1;
+    }
+
+    const mean = saccadeLengths.reduce((a, b) => a + b, 0) / saccadeLengths.length;
+    const variance = saccadeLengths.reduce((a, b) => a + (b - mean) ** 2, 0) / saccadeLengths.length;
+
+    let entropy = 0;
+    Object.values(bins).forEach(count => {
+        const probability = count / items.length;
+        entropy -= probability * Math.log2(probability);
+    });
+
+    return {
+        saccadeVariance: variance,
+        regressionCount: regressions,
+        entropy,
+        horizontalBias: horizontalMoves / (items.length - 1)
+    };
+}
+
+function logTrialMetrics() {
+    const durations = fixations.map(f => f.duration);
+    const meanFix = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
+    const maxFix = durations.length ? Math.max(...durations) : 0;
+
+    console.group('Level 2 Eye-Tracking Trial Metrics');
+    console.log('Challenge:', currentTrialContext.challengeType);
+    console.log('Target:', currentTrialContext.targetText);
+    console.log('Mean Fixation Duration:', meanFix);
+    console.log('Max Fixation Duration:', maxFix);
+    console.log('Fixation Count:', trialData.fixationCount);
+    console.log('Target Fixation Duration:', trialData.targetFixationTime);
+    console.log('Distractor Fixation Duration:', trialData.distractorFixationTime);
+    console.log('TTFF (ms):', trialData.firstFixationTime);
+    console.log('Reaction Time (ms):', trialData.reactionTime);
+    console.log('Hesitation Time (ms):', trialData.hesitationTime);
+    console.log('Clicks:', trialData.clicksOverride ?? trialData.clicks);
+    console.log('Mis-clicks:', trialData.misClicksOverride ?? trialData.misClicks);
+    console.log('Final Fixation:', trialData.finalFixation);
+    console.groupEnd();
+}
+
+function csvCell(value) {
+    const str = value == null ? "" : String(value);
+    return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function exportCurrentTrialMetrics() {
+    if (trialExported) return;
+    trialExported = true;
+    flushCurrentFixation();
+
+    const durations = fixations.map(f => f.duration);
+    const meanFix = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
+    const maxFix = durations.length ? Math.max(...durations) : 0;
+    const totalClicks = trialData.clicksOverride ?? trialData.clicks;
+    const misClicks = trialData.misClicksOverride ?? trialData.misClicks;
+    const accuracy = trialData.accuracyOverride ?? (totalClicks > 0 ? (totalClicks - misClicks) / totalClicks : 0);
+    const needsScanpathMetrics = currentTrialContext.challengeType === 'Mirror Match' || currentTrialContext.challengeType === 'Word Maze';
+    const saccadeData = needsScanpathMetrics ? computeSaccadeMetrics(fixations) : {
+        saccadeVariance: "",
+        regressionCount: "",
+        entropy: "",
+        horizontalBias: ""
+    };
+
+    const row = [
+        ++trialCounter,
+        currentTrialContext.challengeType,
+        currentTrialContext.targetText,
+        meanFix.toFixed(2),
+        maxFix.toFixed(2),
+        trialData.fixationCount,
+        trialData.targetFixationTime.toFixed(2),
+        trialData.distractorFixationTime.toFixed(2),
+        (trialData.distractorFixationTime / Math.max(1, trialData.targetFixationTime)).toFixed(2),
+        trialData.firstFixationTime ?? "",
+        trialData.fixationSwitches,
+        trialData.reactionTime.toFixed(2),
+        trialData.hesitationTime.toFixed(2),
+        totalClicks,
+        misClicks,
+        accuracy.toFixed(2),
+        trialData.finalFixation,
+        score,
+        saccadeData.saccadeVariance === "" ? "" : saccadeData.saccadeVariance.toFixed(2),
+        saccadeData.regressionCount,
+        saccadeData.entropy === "" ? "" : saccadeData.entropy.toFixed(2),
+        saccadeData.horizontalBias === "" ? "" : saccadeData.horizontalBias.toFixed(2),
+        new Date().toISOString()
+    ];
+
+    csvRows.push(row.map(csvCell).join(","));
+    logTrialMetrics();
+}
+
+function downloadMetricsCSV() {
+    if (!csvRows.length) return;
+    const blob = new Blob([CSV_HEADER + "\n" + csvRows.join("\n")], {
+        type: "text/csv;charset=utf-8;"
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "Level2_EyeTracking_Metrics.csv";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+resetTrialData();
+
 /* Game Flow */
-function startGame(){clearAllScheduled();clearGameArea();score=0;currentChallenge=0;selectedChallenges=buildChallenges();updateScore();updateProgressBar();startScreen.classList.add('hidden');gameOverScreen.classList.add('hidden');paused=false;nextChallenge();}
+function startGame(){clearAllScheduled();clearGameArea();score=0;currentChallenge=0;selectedChallenges=buildChallenges();trialCounter=0;csvRows=[];resetTrialData();updateScore();updateProgressBar();startScreen.classList.add('hidden');gameOverScreen.classList.add('hidden');paused=false;nextChallenge();}
 function buildChallenges(){return[{type:'sequenceLetters'},{type:'wordmaze'},{type:'sequenceWords'},{type:'wordmaze'}];}
-function endGame(){clearInterval(timerInterval);timerEl.textContent="Time: 00:00";gameOverScreen.classList.remove('hidden');finalScoreEl.textContent=score;}
+function endGame(){
+    clearInterval(timerInterval);
+    timerEl.textContent="Time: 00:00";
+    stopEyeTracking();
+    gameOverScreen.classList.remove('hidden');
+    finalScoreEl.textContent=score;
+    
+    // Calculate dyslexia probability based on score
+    const assessment = calculateDyslexiaProbability(score);
+    document.getElementById('dyslexia-probability').textContent = assessment.probability + '%';
+    document.getElementById('dyslexia-message').textContent = assessment.message;
+    downloadMetricsCSV();
+}
 function nextChallenge(){clearAllScheduled();clearGameArea();if(currentChallenge>=selectedChallenges.length){endGame();return;}
     challengeActive=true;updateProgressBar();const ch=selectedChallenges[currentChallenge];
     if(ch.type==='sequenceLetters')startSequenceLetters();
@@ -207,41 +543,42 @@ function nextChallenge(){clearAllScheduled();clearGameArea();if(currentChallenge
 
 /* Sequence Letters */
 function startSequenceLetters(){animalDialogue.textContent="Remember these letters!";const prompt=document.createElement('div');prompt.className='challenge-prompt';prompt.textContent="Remember the order of letters!";gamePanel.appendChild(prompt);
-    const letters=Array.from({length:5},()=>String.fromCharCode(65+Math.floor(Math.random()*26)));const cont=document.createElement('div');cont.className='sequence-container';
-    letters.forEach(l=>{const d=document.createElement('div');d.className='sequence-item';d.textContent=l;cont.appendChild(d);});gamePanel.appendChild(cont);
+    const letters=Array.from({length:5},()=>String.fromCharCode(65+Math.floor(Math.random()*26)));setCurrentTrialContext('Sequence Letters', letters.join(' '));const cont=document.createElement('div');cont.className='sequence-container';
+    letters.forEach(l=>{const d=document.createElement('div');d.className='sequence-item';d.textContent=l;d.dataset.correct='true';cont.appendChild(d);});gamePanel.appendChild(cont);
     setTimeout(()=>{cont.querySelectorAll('.sequence-item').forEach(it=>it.style.animation='jumble 0.4s infinite');setTimeout(()=>{cont.innerHTML='';
         let shuf=[...letters].sort(()=>Math.random()-0.5);
-        shuf.forEach(l=>{const d=document.createElement('div');d.className='sequence-item';d.textContent=l;d.draggable=true;d.addEventListener('dragstart',dragStart);d.addEventListener('dragover',dragOver);d.addEventListener('drop',dropped);cont.appendChild(d);});
-        const btn=document.createElement('button');btn.textContent="Submit";btn.onclick=()=>{if(!challengeActive)return;challengeActive=false;clearInterval(timerInterval);let guess=[...cont.querySelectorAll('.sequence-item')].map(c=>c.textContent);let correct=guess.filter((g,i)=>g===letters[i]).length;score+=correct*5;updateScore();showFeedback(correct===letters.length?"Perfect!":`${correct} correct`);currentChallenge++;setTimeout(nextChallenge,1500);};cont.appendChild(btn);
-        startTimer(10,()=>{challengeActive=false;currentChallenge++;nextChallenge();});
+        shuf.forEach(l=>{const d=document.createElement('div');d.className='sequence-item';d.textContent=l;d.dataset.correct='true';d.draggable=true;d.addEventListener('dragstart',dragStart);d.addEventListener('dragover',dragOver);d.addEventListener('drop',dropped);cont.appendChild(d);});
+        const btn=document.createElement('button');btn.textContent="Submit";btn.onclick=()=>{if(!challengeActive)return;challengeActive=false;clearInterval(timerInterval);let guess=[...cont.querySelectorAll('.sequence-item')].map(c=>c.textContent);let correct=guess.filter((g,i)=>g===letters[i]).length;trialData.clicksOverride=letters.length;trialData.misClicksOverride=letters.length-correct;trialData.accuracyOverride=correct/letters.length;if(correct>0&&trialData.reactionTime===0){trialData.reactionTime=performance.now()-trialData.startTime;trialData.hesitationTime=trialData.reactionTime-trialData.targetFixationTime;}score+=correct*5;updateScore();showFeedback(correct===letters.length?"Perfect!":`${correct} correct`);exportCurrentTrialMetrics();currentChallenge++;setTimeout(nextChallenge,1500);};cont.appendChild(btn);
+        startTimer(10,()=>{challengeActive=false;trialData.clicksOverride=letters.length;trialData.misClicksOverride=letters.length;trialData.accuracyOverride=0;exportCurrentTrialMetrics();currentChallenge++;nextChallenge();});
     },800);},3000);}
 function startSequenceWords(){animalDialogue.textContent="Remember these words!";const prompt=document.createElement('div');prompt.className='challenge-prompt';prompt.textContent="Remember the order of words!";gamePanel.appendChild(prompt);
-    const words=["SUN","MOON","STAR","PLANET","CLOUD"];const cont=document.createElement('div');cont.className='word-order-container';words.forEach(w=>{const d=document.createElement('div');d.className='word-item';d.textContent=w;cont.appendChild(d);});gamePanel.appendChild(cont);
+    const words=["SUN","MOON","STAR","PLANET","CLOUD"];setCurrentTrialContext('Sequence Words', words.join(' | '));const cont=document.createElement('div');cont.className='word-order-container';words.forEach(w=>{const d=document.createElement('div');d.className='word-item';d.textContent=w;d.dataset.correct='true';cont.appendChild(d);});gamePanel.appendChild(cont);
     setTimeout(()=>{cont.querySelectorAll('.word-item').forEach(it=>it.style.animation='jumble 0.4s infinite');setTimeout(()=>{cont.innerHTML='';let shuf=[...words].sort(()=>Math.random()-0.5);
-        shuf.forEach(w=>{const d=document.createElement('div');d.className='word-item';d.textContent=w;d.draggable=true;d.addEventListener('dragstart',dragStart);d.addEventListener('dragover',dragOver);d.addEventListener('drop',dropped);cont.appendChild(d);});
-        const btn=document.createElement('button');btn.textContent="Submit";btn.onclick=()=>{if(!challengeActive)return;challengeActive=false;clearInterval(timerInterval);let guess=[...cont.querySelectorAll('.word-item')].map(c=>c.textContent);let correct=guess.filter((g,i)=>g===words[i]).length;score+=correct*5;updateScore();showFeedback(correct===words.length?"Perfect!":`${correct} correct`);currentChallenge++;setTimeout(nextChallenge,1500);};cont.appendChild(btn);
-        startTimer(10,()=>{challengeActive=false;currentChallenge++;nextChallenge();});
+        shuf.forEach(w=>{const d=document.createElement('div');d.className='word-item';d.textContent=w;d.dataset.correct='true';d.draggable=true;d.addEventListener('dragstart',dragStart);d.addEventListener('dragover',dragOver);d.addEventListener('drop',dropped);cont.appendChild(d);});
+        const btn=document.createElement('button');btn.textContent="Submit";btn.onclick=()=>{if(!challengeActive)return;challengeActive=false;clearInterval(timerInterval);let guess=[...cont.querySelectorAll('.word-item')].map(c=>c.textContent);let correct=guess.filter((g,i)=>g===words[i]).length;trialData.clicksOverride=words.length;trialData.misClicksOverride=words.length-correct;trialData.accuracyOverride=correct/words.length;if(correct>0&&trialData.reactionTime===0){trialData.reactionTime=performance.now()-trialData.startTime;trialData.hesitationTime=trialData.reactionTime-trialData.targetFixationTime;}score+=correct*5;updateScore();showFeedback(correct===words.length?"Perfect!":`${correct} correct`);exportCurrentTrialMetrics();currentChallenge++;setTimeout(nextChallenge,1500);};cont.appendChild(btn);
+        startTimer(10,()=>{challengeActive=false;trialData.clicksOverride=words.length;trialData.misClicksOverride=words.length;trialData.accuracyOverride=0;exportCurrentTrialMetrics();currentChallenge++;nextChallenge();});
     },800);},3000);}
 
 /* Word Maze */
 function startWordMaze(){
     animalDialogue.textContent="Find all the hidden words!";
     const wordsPool=["CAT","DOG","SUN","MAP","BAT","HAT","CUP","MOON","STAR","PLANET"],size=8;
-    let targetWords,grid,success=false;const dirs=[[0,1],[1,0],[1,1],[-1,1],[0,-1],[-1,0],[-1,-1],[1,-1]];
-    function generateGrid(){grid=Array.from({length:size},()=>Array(size).fill(''));targetWords=shuffle(wordsPool).slice(0,5);let placed=0;
+    let targetWords,grid,success=false,targetCellKeys=new Set();const dirs=[[0,1],[1,0],[1,1],[-1,1],[0,-1],[-1,0],[-1,-1],[1,-1]];
+    function generateGrid(){grid=Array.from({length:size},()=>Array(size).fill(''));targetWords=shuffle(wordsPool).slice(0,5);targetCellKeys=new Set();let placed=0;
         targetWords.forEach(word=>{let done=false,tries=0;while(!done&&tries<200){tries++;let dir=dirs[Math.floor(Math.random()*dirs.length)];
             let row=Math.floor(Math.random()*size),col=Math.floor(Math.random()*size);
             let endR=row+dir[0]*(word.length-1),endC=col+dir[1]*(word.length-1);
             if(endR<0||endR>=size||endC<0||endC>=size)continue;
             let ok=true;for(let i=0;i<word.length;i++){let r=row+dir[0]*i,c=col+dir[1]*i;if(grid[r][c]&&grid[r][c]!==word[i]){ok=false;break;}}
-            if(ok){for(let i=0;i<word.length;i++){grid[row+dir[0]*i][col+dir[1]*i]=word[i];}done=true;placed++;}}});
+            if(ok){for(let i=0;i<word.length;i++){const r=row+dir[0]*i,c=col+dir[1]*i;grid[r][c]=word[i];targetCellKeys.add(`${r},${c}`);}done=true;placed++;}}});
         success=placed===targetWords.length;
         for(let r=0;r<size;r++)for(let c=0;c<size;c++)if(!grid[r][c])grid[r][c]=String.fromCharCode(65+Math.floor(Math.random()*26));
     }
     while(!success)generateGrid();
+    setCurrentTrialContext('Word Maze', targetWords.join(' | '));
     const prompt=document.createElement('div');prompt.className='challenge-prompt';prompt.textContent="Find: "+targetWords.join(", ");gamePanel.appendChild(prompt);
     const gridCont=document.createElement('div');gridCont.className='grid-container';
-    for(let r=0;r<size;r++)for(let c=0;c<size;c++){let cell=document.createElement('div');cell.className='grid-cell';cell.textContent=grid[r][c];cell.dataset.r=r;cell.dataset.c=c;gridCont.appendChild(cell);}
+    for(let r=0;r<size;r++)for(let c=0;c<size;c++){let cell=document.createElement('div');cell.className='grid-cell';cell.textContent=grid[r][c];cell.dataset.r=r;cell.dataset.c=c;cell.dataset.correct=targetCellKeys.has(`${r},${c}`)?'true':'false';gridCont.appendChild(cell);}
     gamePanel.appendChild(gridCont);
     let sel=[],found=new Set();
     function areAdj(a,b){return Math.abs(a[0]-b[0])<=1&&Math.abs(a[1]-b[1])<=1&&!(a[0]===b[0]&&a[1]===b[1]);}
@@ -261,7 +598,7 @@ function startWordMaze(){
                 if((str===w&&cellsMatch(sel,w))||(rev===w&&cellsMatch([...sel].reverse(),w))){
                     sel.forEach(c=>{c.classList.remove('selected');c.classList.add('foundword');});
                     found.add(w);score+=10;updateScore();showFeedback(`Found "${w}"!`);sel=[];
-                    if(found.size===targetWords.length){clearInterval(timerInterval);challengeActive=false;currentChallenge++;setTimeout(nextChallenge,1500); }
+                    if(found.size===targetWords.length){clearInterval(timerInterval);challengeActive=false;trialData.accuracyOverride=1;exportCurrentTrialMetrics();currentChallenge++;setTimeout(nextChallenge,1500); }
                     return;
                 }
             }
@@ -272,6 +609,9 @@ function startWordMaze(){
         if(paused||!challengeActive)return;
         let cell=e.target;
         if(!cell.classList.contains('grid-cell')||cell.classList.contains('foundword'))return;
+        trialData.clicks++;
+        if(cell.dataset.correct!=='true') trialData.misClicks++;
+        else if(trialData.reactionTime===0){trialData.reactionTime=performance.now()-trialData.startTime;trialData.hesitationTime=trialData.reactionTime-trialData.targetFixationTime;}
         if(cell.classList.contains('selected')){
             cell.classList.remove('selected');
             sel=sel.filter(c=>c!==cell);
@@ -283,7 +623,7 @@ function startWordMaze(){
         }
         cell.classList.add('selected');sel.push(cell);checkSel();
     });
-    startTimer(60,()=>{challengeActive=false;currentChallenge++;nextChallenge();});
+    startTimer(60,()=>{challengeActive=false;trialData.accuracyOverride=found.size/targetWords.length;exportCurrentTrialMetrics();currentChallenge++;nextChallenge();});
 }
 
 /* Drag & Drop */
@@ -293,12 +633,164 @@ function dragOver(e){e.preventDefault();}
 function dropped(e){e.preventDefault();if(dragSrcEl!==this){let t=dragSrcEl.textContent;dragSrcEl.textContent=this.textContent;this.textContent=t;}}
 function shuffle(a){return a.slice().sort(()=>Math.random()-0.5);}
 
+/* Dyslexia Assessment */
+function calculateDyslexiaProbability(score) {
+    // Score ranges and corresponding dyslexia probability
+    // Lower scores indicate more difficulty with sequencing and working memory tasks
+    if (score >= 200) {
+        return {
+            probability: 5,
+            message: "Excellent performance! Very low risk of dyslexia."
+        };
+    } else if (score >= 150) {
+        return {
+            probability: 15,
+            message: "Good performance. Low risk of dyslexia."
+        };
+    } else if (score >= 100) {
+        return {
+            probability: 35,
+            message: "Moderate performance. Some signs of difficulty with sequencing tasks."
+        };
+    } else if (score >= 50) {
+        return {
+            probability: 60,
+            message: "Below average performance. Higher likelihood of dyslexia-related challenges."
+        };
+    } else if (score >= 20) {
+        return {
+            probability: 80,
+            message: "Significant difficulties detected. High probability of dyslexia."
+        };
+    } else {
+        return {
+            probability: 95,
+            message: "Severe difficulties with sequencing and working memory. Very high probability of dyslexia."
+        };
+    }
+}
+
 /* Pause */
 pauseBtn.onclick=()=>{paused?resumeGame():pauseGame();};
 function pauseGame(){paused=true;pauseOverlay.classList.remove('hidden');clearInterval(timerInterval);}
 function resumeGame(){if(!paused)return;paused=false;pauseOverlay.classList.add('hidden');}
-resumeBtn.onclick=resumeGame;restartBtn.onclick=startGame;
-startBtn.onclick=startGame;playAgain.onclick=startGame;
+resumeBtn.onclick=resumeGame;restartBtn.onclick=()=>{ stopEyeTracking(); startGame(); };
+startBtn.onclick=()=>{ startGame(); tryStartEyeTracking(); };
+playAgain.onclick=()=>{ stopEyeTracking(); startGame(); };
+
+/* Webcam Feed */
+// Note: camera access is requested when starting eye tracking (user-initiated)
+// to avoid browsers blocking or denying permission on cross-origin tunnels.
+// The video element will be supplied to WebGazer so it doesn't attempt a
+// second getUserMedia call.
+
+
+/* Eye Tracking (copied to mirror level1: pointer only, no dwell actions) */
+let webgazerRunning=false;
+let calibrationPoints=[];
+const greenDot=document.getElementById('gaze-dot');
+const webcamVideoEl=document.getElementById('webcam');
+
+function createCalibrationPoints(){
+    const grid=[0.2,0.5,0.8];
+    let idx=0; calibrationPoints=[];
+    for(let gy=0; gy<3; gy++){
+        for(let gx=0; gx<3; gx++){
+            idx++;
+            const x=grid[gx], y=grid[gy];
+            const pixelX=Math.round(x*window.innerWidth);
+            const pixelY=Math.round(y*window.innerHeight);
+            const dot=document.createElement('div');
+            dot.className='calibration-point'; dot.textContent=String(idx);
+            dot.style.position='fixed'; dot.style.width='20px'; dot.style.height='20px';
+            dot.style.background='pink'; dot.style.border='3px solid red'; dot.style.borderRadius='50%';
+            dot.style.zIndex='1001'; dot.style.cursor='pointer'; dot.style.display='flex';
+            dot.style.alignItems='center'; dot.style.justifyContent='center'; dot.style.color='white'; dot.style.fontSize='12px';
+            dot.style.left=(pixelX-10)+'px';
+            dot.style.top=(pixelY-10)+'px';
+            document.body.appendChild(dot);
+            calibrationPoints.push({dot,pos:{x:pixelX,y:pixelY}});
+        }
+    }
+    return calibrationPoints;
+}
+function removeCalibrationPoints(){ calibrationPoints.forEach(p=>p.dot&&p.dot.remove()); }
+
+async function startEyeTracking(){
+    if(webgazerRunning || typeof webgazer==='undefined') return;
+    console.log('Starting WebGazer...');
+    webgazerRunning=true;
+    try {
+        if(webgazer.params){
+            webgazer.params.faceMeshSolutionPath = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh';
+        }
+
+        await webgazer
+            .setGazeListener((data)=>{
+                if(!data || paused) return;
+                const gx=data.x;
+                const gy=data.y;
+                const now=performance.now();
+                processGazePoint(gx, gy, now);
+                console.log('Gaze:', data.x, data.y);
+                const x=data.x-5, y=data.y-5;
+                greenDot.style.left=x+'px'; greenDot.style.top=y+'px'; greenDot.style.display='block';
+            })
+            .setTracker('TFFacemesh')
+
+            .addMouseEventListeners()
+            .begin();
+
+        const webgazerFeed = document.getElementById('webgazerVideoFeed');
+        if(webgazerFeed && webgazerFeed.srcObject){
+            webcamVideoEl.srcObject = webgazerFeed.srcObject;
+            try { await webcamVideoEl.play(); } catch(playErr){ console.warn('Preview play skipped.', playErr); }
+        }
+        webgazer.showVideo(false);
+        webgazer.showFaceOverlay(false);
+        webgazer.showFaceFeedbackBox(false);
+        webgazer.showPredictionPoints(false);
+
+        setTimeout(()=>{
+            createCalibrationPoints(); let calStep=0; const cps=calibrationPoints;
+            cps.forEach((p,i)=>{
+                p.dot.style.opacity = i===0 ? 1 : 0.3;
+                p.dot.onclick=()=>{
+                    if(i!==calStep) return;
+                    if(typeof webgazer.recordScreenPosition==='function') webgazer.recordScreenPosition(p.pos.x, p.pos.y, 'click');
+                    console.log(`Cal ${i+1} recorded.`);
+                    p.dot.style.opacity=0.5; calStep++;
+                    if(calStep<9) cps[calStep].dot.style.opacity=1; else { cps.forEach(pp=>pp.dot.remove()); console.log('Cal complete!'); greenDot.style.display='block'; }
+                };
+            });
+        },1000);
+
+    } catch(e){ console.error(e); webgazerRunning=false; }
+}
+function stopEyeTracking(){
+    try { if(typeof webgazer!=='undefined'){ webgazer.end(); } } catch(e){ console.error(e); }
+    webcamVideoEl.pause();
+    webcamVideoEl.srcObject = null;
+    greenDot.style.display='none'; removeCalibrationPoints(); webgazerRunning=false; console.log('Stopped.');
+}
+function tryStartEyeTracking(){ if(typeof webgazer==='undefined'){ console.warn('WebGazer not loaded yet.'); return; } startEyeTracking(); }
+
+// Integrate with pause/resume
+const _origPause=pauseGame; pauseGame=function(){ _origPause(); stopEyeTracking(); };
+const _origResume=resumeGame; resumeGame=function(){ _origResume(); if(!paused) tryStartEyeTracking(); };
+
+// Camera help overlay buttons
+document.addEventListener('DOMContentLoaded', ()=>{
+    const retry = document.getElementById('camera-retry');
+    const dismiss = document.getElementById('camera-dismiss');
+    const help = document.getElementById('camera-help');
+    if(retry){ retry.onclick = ()=>{ if(help) help.style.display='none'; tryStartEyeTracking(); }; }
+    if(dismiss){ dismiss.onclick = ()=>{ if(help) help.style.display='none'; }; }
+});
+
+document.addEventListener('visibilitychange', ()=>{
+    if(document.hidden){ stopEyeTracking(); } else if(!paused){ tryStartEyeTracking(); }
+});
 </script>
 </body>
 </html>
